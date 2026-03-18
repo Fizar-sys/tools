@@ -93,10 +93,10 @@
   .meter-card.warning .mc-status{ background:var(--yellow); }
   .mc-info { flex:1; min-width:0; }
   .mc-name { font-weight:600; font-size:14px; }
-  .mc-loc  { font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
-  .mc-prev { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);
+  .mc-loc  { font-size:11px; color:#cbd5e1; font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+  .mc-prev { font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text);
     text-align:right; flex-shrink:0; }
-  .mc-prev small { display:block; font-size:10px; color:var(--muted); opacity:.6; }
+  .mc-prev small { display:block; font-size:10px; color:#94a3b8; margin-top:2px; }
 
   /* Input area */
   .mc-body { display:none; padding:0 16px 16px; }
@@ -536,10 +536,10 @@ function createMeterCard(m) {
       <div class="mc-status"></div>
       <div class="mc-info">
         <div class="mc-name">${m.name}</div>
-        <div class="mc-loc u-${m.u}">${bldg}${loc ? ' · ' + loc : ''}</div>
+        <div class="mc-loc">${bldg}${loc ? ' · <span style="color:#94a3b8">' + loc + '</span>' : ''}</div>
       </div>
       <div class="mc-prev">
-        ${prevStr} <span style="font-size:10px">${m.unit}</span>
+        <span style="color:var(--yellow);font-weight:600">${prevStr}</span> <span style="font-size:10px;color:#94a3b8">${m.unit}</span>
         <small>${refDate || '—'}</small>
       </div>
     </div>
@@ -549,8 +549,8 @@ function createMeterCard(m) {
         <div class="reading-input-wrap">
           <label>Bieżący odczyt (${m.unit})</label>
           <input type="number" step="0.01" class="reading-input" id="inp-${m.id}"
-            placeholder="0"
-            oninput="onInputChange('${m.id}')">
+            placeholder="wpisz odczyt"
+            oninput="onInputChange('${m.id}')" autocomplete="off">
         </div>
         <button class="btn-ocr" onclick="startOCR('${m.id}')" title="Rozpoznaj z zdjęcia">
           📷 OCR
