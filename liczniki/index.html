@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fizar — Liczniki</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2435;
+    --border: #2a3148; --accent: #3b82f6; --accent2: #1d4ed8;
+    --text: #e2e8f0; --muted: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh; display: flex; flex-direction: column;
+  }
+  header {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 20px 40px; display: flex; align-items: center; gap: 16px;
+  }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 20px; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .back {
+    margin-left: auto; font-size: 13px; color: var(--muted);
+    text-decoration: none; display: flex; align-items: center; gap: 6px;
+    transition: color .2s;
+  }
+  .back:hover { color: var(--text); }
+
+  main { flex: 1; max-width: 800px; margin: 60px auto; padding: 0 24px; width: 100%; }
+  h1 { font-size: 28px; font-weight: 500; margin-bottom: 8px; }
+  .subtitle { color: var(--muted); font-size: 14px; margin-bottom: 48px; }
+
+  .tools-grid { display: flex; flex-direction: column; gap: 16px; }
+
+  .tool-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px 32px;
+    display: flex; align-items: center; gap: 28px;
+    text-decoration: none; color: var(--text);
+    transition: border-color .2s, background .2s, transform .15s;
+  }
+  .tool-card:hover {
+    border-color: var(--accent); background: rgba(59,130,246,.06);
+    transform: translateY(-2px);
+  }
+  .tool-card.disabled {
+    opacity: .4; cursor: not-allowed; pointer-events: none;
+  }
+  .tool-icon {
+    width: 52px; height: 52px; border-radius: 10px;
+    background: rgba(59,130,246,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+  .tool-info { flex: 1; }
+  .tool-name { font-size: 17px; font-weight: 600; margin-bottom: 6px; }
+  .tool-desc { font-size: 13px; color: var(--muted); line-height: 1.5; }
+  .tool-tag {
+    font-family: 'IBM Plex Mono', monospace; font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    background: rgba(59,130,246,.12); color: var(--accent); flex-shrink: 0;
+  }
+  .tool-tag.soon {
+    background: rgba(100,116,139,.12); color: var(--muted);
+  }
+
+  footer {
+    text-align: center; padding: 32px; color: var(--muted);
+    font-size: 12px; border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FIZAR<span>.liczniki</span></div>
+  <a class="back" href="../">← Wszystkie narzędzia</a>
+</header>
+
+<main>
+  <h1>Liczniki mediów</h1>
+  <p class="subtitle">Zarządzanie licznikami wody, ciepła i energii elektrycznej</p>
+
+  <div class="tools-grid">
+
+    <a class="tool-card disabled" href="odczyty/">
+      <div class="tool-icon">📱</div>
+      <div class="tool-info">
+        <div class="tool-name">Odczyty miesięczne</div>
+        <div class="tool-desc">
+          Miesięczna inwentaryzacja wskazań liczników z użyciem skanera QR.
+          Eksport do arkusza master Excel kompatybilnego z ForImport w enova365.
+        </div>
+      </div>
+      <div class="tool-tag soon">WKRÓTCE</div>
+    </a>
+
+    <a class="tool-card" href="qr/">
+      <div class="tool-icon">🏷️</div>
+      <div class="tool-info">
+        <div class="tool-name">Generator naklejek QR</div>
+        <div class="tool-desc">
+          Generuje arkusze naklejek QR dla wszystkich liczników we wszystkich nieruchomościach.
+          Filtruj po medium i budynku, drukuj na papierze samoprzylepnym.
+          Wykonywane jednorazowo lub przy dodaniu nowego licznika.
+        </div>
+      </div>
+      <div class="tool-tag">RZADKO</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin
+</footer>
+
+</body>
+</html>
