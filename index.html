@@ -3,146 +3,410 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fizar — Narzędzia</title>
+<title>Fizar — Naklejki QR | Grudziądz</title>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+
   :root {
-    --bg: #0f1117; --surface: #181c27; --surface2: #1e2435;
-    --border: #2a3148; --accent: #3b82f6; --accent2: #1d4ed8;
-    --text: #e2e8f0; --muted: #64748b;
+    --bg:#0f1117; --surface:#181c27; --surface2:#1e2435;
+    --border:#2a3148; --accent:#3b82f6; --text:#e2e8f0; --muted:#64748b;
+    --heat:#ef4444; --water:#06b6d4; --elec:#f59e0b;
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body {
-    background: var(--bg); color: var(--text);
-    font-family: 'IBM Plex Sans', sans-serif;
-    min-height: 100vh;
-    display: flex; flex-direction: column;
-  }
+  * { box-sizing:border-box; margin:0; padding:0; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif; font-size:14px; }
 
   header {
-    background: var(--surface);
-    border-bottom: 1px solid var(--border);
-    padding: 20px 40px;
-    display: flex; align-items: center; gap: 16px;
+    background:var(--surface); border-bottom:1px solid var(--border);
+    padding:18px 32px; display:flex; align-items:center; gap:16px;
   }
-  .logo {
-    font-family: 'IBM Plex Mono', monospace;
-    font-weight: 600; font-size: 20px; color: var(--accent);
-  }
-  .logo span { color: var(--muted); font-weight: 400; }
-  .tagline { color: var(--muted); font-size: 13px; margin-left: 8px; }
+  .logo { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:18px; color:var(--accent); }
+  .logo span { color:var(--muted); font-weight:400; }
 
-  main {
-    flex: 1;
-    max-width: 800px;
-    margin: 60px auto;
-    padding: 0 24px;
-    width: 100%;
-  }
+  main { max-width:1200px; margin:0 auto; padding:32px 24px; }
 
-  h1 {
-    font-size: 28px; font-weight: 500;
-    margin-bottom: 8px;
+  .toolbar {
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    padding:16px 20px; margin-bottom:24px;
+    display:flex; align-items:center; gap:20px; flex-wrap:wrap;
   }
-  .subtitle {
-    color: var(--muted); font-size: 14px;
-    margin-bottom: 48px;
-  }
+  .toolbar-title { font-size:15px; font-weight:500; }
+  .count { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+    padding:3px 10px; border-radius:20px; background:rgba(59,130,246,.12); color:var(--accent); }
 
-  .tools-grid {
-    display: flex; flex-direction: column; gap: 16px;
-  }
+  .sep { width:1px; height:24px; background:var(--border); }
 
-  .tool-card {
-    background: var(--surface);
-    border: 1px solid var(--border);
-    border-radius: 12px;
-    padding: 28px 32px;
-    display: flex; align-items: center; gap: 28px;
-    text-decoration: none;
-    color: var(--text);
-    transition: border-color .2s, background .2s, transform .15s;
+  .filter-group { display:flex; gap:6px; align-items:center; }
+  .filter-label { font-size:11px; color:var(--muted); margin-right:2px; }
+  .fb {
+    padding:5px 12px; border-radius:20px; font-size:11px; font-weight:600;
+    font-family:'IBM Plex Mono',monospace; cursor:pointer;
+    border:1px solid var(--border); background:var(--surface2); color:var(--muted);
+    transition:all .15s;
   }
-  .tool-card:hover {
-    border-color: var(--accent);
-    background: rgba(59,130,246,.06);
-    transform: translateY(-2px);
-  }
+  .fb:hover { color:var(--text); }
+  .fb.on-all   { background:rgba(59,130,246,.15); color:var(--accent);  border-color:var(--accent); }
+  .fb.on-c     { background:rgba(239,68,68,.15);  color:var(--heat);   border-color:var(--heat); }
+  .fb.on-w     { background:rgba(6,182,212,.15);  color:var(--water);  border-color:var(--water); }
+  .fb.on-p     { background:rgba(245,158,11,.15); color:var(--elec);   border-color:var(--elec); }
+  .fb.on-O     { background:rgba(139,92,246,.15); color:#a78bfa;       border-color:#a78bfa; }
+  .fb.on-R     { background:rgba(34,197,94,.15);  color:#22c55e;       border-color:#22c55e; }
 
-  .tool-icon {
-    width: 52px; height: 52px; border-radius: 10px;
-    background: rgba(59,130,246,.15);
-    display: flex; align-items: center; justify-content: center;
-    font-size: 24px; flex-shrink: 0;
+  .btn-print {
+    margin-left:auto; padding:10px 24px; background:var(--accent); color:#fff;
+    border:none; border-radius:7px; font-size:13px; font-weight:600;
+    cursor:pointer; font-family:'IBM Plex Sans',sans-serif; transition:background .2s;
+    display:flex; align-items:center; gap:8px;
   }
+  .btn-print:hover { background:#1d4ed8; }
 
-  .tool-info { flex: 1; }
-  .tool-name {
-    font-size: 17px; font-weight: 600; margin-bottom: 6px;
+  /* ── Preview grid ── */
+  #grid {
+    display:grid;
+    grid-template-columns:repeat(auto-fill, minmax(170px,1fr));
+    gap:10px;
   }
-  .tool-desc {
-    font-size: 13px; color: var(--muted); line-height: 1.5;
+  .card {
+    background:#fff; color:#111; border-radius:8px; padding:10px 8px;
+    display:flex; flex-direction:column; align-items:center; gap:4px;
+    border:2px solid transparent; cursor:default;
   }
-  .tool-tag {
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 11px; font-weight: 600;
-    padding: 4px 10px; border-radius: 20px;
-    background: rgba(59,130,246,.12); color: var(--accent);
-    flex-shrink: 0;
-  }
+  .card canvas { width:72px!important; height:72px!important; display:block; }
+  .c-util { font-size:8px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
+    padding:2px 6px; border-radius:2px; align-self:flex-end; }
+  .c-util.C { background:#fee2e2; color:#991b1b; }
+  .c-util.W { background:#cffafe; color:#0e7490; }
+  .c-util.P { background:#fef3c7; color:#92400e; }
+  .c-bldg { font-size:8px; color:#777; text-transform:uppercase; letter-spacing:.5px; }
+  .c-loc  { font-size:12px; font-weight:700; color:#000; text-align:center; }
+  .c-shared { font-size:9px; color:#666; }
+  .c-name { font-size:7.5px; color:#666; text-align:center; line-height:1.3; }
+  .c-id   { font-size:6.5px; color:#aaa; text-align:center; word-break:break-all; margin-top:2px; }
 
-  footer {
-    text-align: center;
-    padding: 32px;
-    color: var(--muted);
-    font-size: 12px;
-    border-top: 1px solid var(--border);
+  #empty { display:none; text-align:center; padding:60px; color:var(--muted); }
+
+  /* ── Print ── */
+  @media print {
+    body, header, main { display:none !important; }
+    #psheet { display:block !important; }
   }
+  #psheet { display:none; }
+
+  /* A4 landscape: 5 columns × 4 rows = 20 per page, ~55×60mm each */
+  .ppage {
+    width:297mm; height:210mm; padding:8mm;
+    display:grid; grid-template-columns:repeat(5,1fr); grid-template-rows:repeat(4,1fr);
+    gap:3mm; page-break-after:always; background:#fff;
+  }
+  .ppage:last-child { page-break-after:auto; }
+
+  .ps {
+    border:.4px solid #ccc; border-radius:2.5mm;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:1.5mm; gap:.8mm; overflow:hidden; background:#fff;
+  }
+  .ps-util { font-size:5.5pt; font-weight:700; text-transform:uppercase;
+    padding:1px 3px; border-radius:1.5px; align-self:flex-end; letter-spacing:.4px; }
+  .ps-util.C { background:#fee2e2; color:#991b1b; }
+  .ps-util.W { background:#cffafe; color:#0e7490; }
+  .ps-util.P { background:#fef3c7; color:#92400e; }
+  .ps canvas { width:20mm!important; height:20mm!important; }
+  .ps-bldg { font-size:5pt; color:#777; text-transform:uppercase; letter-spacing:.3px; }
+  .ps-floor { font-size:7.5pt; font-weight:700; color:#333; }
+  .ps-prem  { font-size:10pt; font-weight:900; color:#000; }
+  .ps-shared { font-size:6.5pt; font-weight:600; color:#555; }
+  .ps-name  { font-size:5pt; color:#666; text-align:center; max-width:42mm; line-height:1.3; }
+  .ps-id    { font-size:4pt; color:#aaa; text-align:center; word-break:break-all; max-width:42mm; }
+  .ps-empty { border:.4px dashed #eee!important; }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">FIZAR<span>.tools</span></div>
-  <span class="tagline">Narzędzia zarządcy nieruchomości</span>
+  <div class="logo">FIZAR<span>.qr</span></div>
+  <div style="width:1px;height:24px;background:var(--border)"></div>
+  <span style="font-size:13px;color:var(--muted)">Generator Naklejek QR — Grudziądz · Unia Park Retail</span>
 </header>
 
 <main>
-  <h1>Dostępne narzędzia</h1>
-  <p class="subtitle">Wybierz narzędzie które chcesz uruchomić</p>
-
-  <div class="tools-grid">
-
-    <a class="tool-card" href="wezwania/">
-      <div class="tool-icon">📄</div>
-      <div class="tool-info">
-        <div class="tool-name">Wezwania do zapłaty</div>
-        <div class="tool-desc">
-          Generuje wezwania do zapłaty na podstawie raportu struktury wiekowej należności
-          (Aging Report) z systemu enova365. Wczytaj PDF, oznacz najemców, pobierz pisma w ZIP.
-        </div>
-      </div>
-      <div class="tool-tag">AGING → DOCX</div>
-    </a>
-
-    <a class="tool-card" href="sch/">
-      <div class="tool-icon">📊</div>
-      <div class="tool-info">
-        <div class="tool-name">Rozliczenie opłat eksploatacyjnych (SCH)</div>
-        <div class="tool-desc">
-          Generuje listy przewodnie i załączniki do rozliczenia rocznego opłat wspólnych
-          dla najemców oznaczonych SC. Wczytaj plik Excel, sprawdź wyniki, pobierz komplety w ZIP.
-        </div>
-      </div>
-      <div class="tool-tag">SCH → DOCX</div>
-    </a>
-
+  <div class="toolbar">
+    <span class="toolbar-title">Liczniki</span>
+    <span class="count" id="cnt">80</span>
+    <div class="sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Medium:</span>
+      <button class="fb on-all" id="fu-all"  onclick="fu('all')">Wszystkie</button>
+      <button class="fb" id="fu-C" onclick="fu('C')">🔴 Ciepło</button>
+      <button class="fb" id="fu-W" onclick="fu('W')">🔵 Woda</button>
+      <button class="fb" id="fu-P" onclick="fu('P')">🟡 Prąd</button>
+    </div>
+    <div class="sep"></div>
+    <div class="filter-group">
+      <span class="filter-label">Budynek:</span>
+      <button class="fb on-all" id="fb-all" onclick="fb('all')">Oba</button>
+      <button class="fb" id="fb-O" onclick="fb('O')">Biurowy</button>
+      <button class="fb" id="fb-R" onclick="fb('R')">Handlowy</button>
+    </div>
+    <button class="btn-print" onclick="doPrint()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+      </svg>
+      Drukuj naklejki
+    </button>
   </div>
+
+  <div id="grid"></div>
+  <div id="empty">Brak liczników dla wybranego filtra.</div>
 </main>
 
-<footer>
-  Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin
-</footer>
+<div id="psheet"></div>
 
+<script>
+const METERS = [
+  {id:"LICZ_C_GRUDZ_O",         name:"Ciepło b.biurowy/budynek",         num:"4103826/2001",         u:"C",bld:"O",fl:null,pr:null},
+  {id:"LICZ_C_GRUDZ_O-0-B0002", name:"Ciepło b.biurowy/KIK",             num:"4103827/2001",         u:"C",bld:"O",fl:"0",  pr:"B0002"},
+  {id:"LICZ_C_GRUDZ_R_1",       name:"Ciepło/budynek C.O.",              num:"55612592/2016",        u:"C",bld:"R",fl:null,pr:null},
+  {id:"LICZ_C_GRUDZ_R_2",       name:"Ciepło/budynek WE",                num:"6108991/2007",         u:"C",bld:"R",fl:null,pr:null},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_1",name:"Ciepło/Hildebrandt CO",          num:"36025853",             u:"C",bld:"R",fl:"0",  pr:"SU001_1"},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_2",name:"Ciepło/Hildebrandt WE",          num:"41858194",             u:"C",bld:"R",fl:"0",  pr:"SU001_2"},
+  {id:"LICZ_W_GRUDZ",           name:"Woda/UniaPark główny",             num:"13966 1;C13JH000483",  u:"W",bld:"X",fl:null,pr:null},
+  {id:"LICZ_W_GRUDZ_O",         name:"Woda/budynek główny biurowy",      num:"6252922",              u:"W",bld:"O",fl:null,pr:null},
+  {id:"LICZ_W_GRUDZ_O-0-B0002", name:"Woda/KIK",                         num:"3493531",              u:"W",bld:"O",fl:"0",  pr:"B0002"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_1",name:"Woda_1/Edicon",                  num:"3443835",              u:"W",bld:"O",fl:"1",  pr:"B0003_1"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_2",name:"Woda_2/Edicon",                  num:"3443720",              u:"W",bld:"O",fl:"1",  pr:"B0003_2"},
+  {id:"LICZ_W_GRUDZ_O-2-B003A", name:"Woda/Strefa Uroda",                num:"7295376",              u:"W",bld:"O",fl:"2",  pr:"B003A"},
+  {id:"LICZ_W_GRUDZ_O-2-B0004", name:"Woda/Agnieszka Gruca",            num:"7395378",              u:"W",bld:"O",fl:"2",  pr:"B0004"},
+  {id:"LICZ_W_GRUDZ_O-2-B0006", name:"Woda/Sklepy Komfort",             num:"3491564",              u:"W",bld:"O",fl:"2",  pr:"B0006"},
+  {id:"LICZ_W_GRUDZ_O-2-B0015B",name:"Woda/TEB",                        num:"669656/09",            u:"W",bld:"O",fl:"2",  pr:"B0015B"},
+  {id:"LICZ_W_GRUDZ_O-2-B0016", name:"Woda/Esthetic Dental",            num:"2022.0129281",         u:"W",bld:"O",fl:"2",  pr:"B0016"},
+  {id:"LICZ_W_GRUDZ_O-2-B0019", name:"Woda/Klinika Ust",                num:"2023.0121205",         u:"W",bld:"O",fl:"2",  pr:"B0019"},
+  {id:"LICZ_W_GRUDZ_O-3-B0001", name:"Woda/PPL Tomasz Żary",            num:"33800500",             u:"W",bld:"O",fl:"3",  pr:"B0001"},
+  {id:"LICZ_W_GRUDZ_R-0-SU001", name:"Woda/Hildebrandt",                num:"526680-10",            u:"W",bld:"R",fl:"0",  pr:"SU001"},
+  {id:"LICZ_W_GRUDZ_R-0-SU002", name:"Woda/vacant",                     num:"305135/09",            u:"W",bld:"R",fl:"0",  pr:"SU002"},
+  {id:"LICZ_W_GRUDZ_R-0-SU003-4",name:"Woda/Euro-Net",                  num:"8866665",              u:"W",bld:"R",fl:"0",  pr:"SU003-4"},
+  {id:"LICZ_W_GRUDZ_R-0-SU005", name:"Woda/Rossmann",                   num:"9265688",              u:"W",bld:"R",fl:"0",  pr:"SU005"},
+  {id:"LICZ_W_GRUDZ_R-0-SU006", name:"Woda/Gold Investments",           num:"9080016",              u:"W",bld:"R",fl:"0",  pr:"SU006"},
+  {id:"LICZ_W_GRUDZ_R-0-SU007", name:"Woda/Cefarm",                     num:"80556411",             u:"W",bld:"R",fl:"0",  pr:"SU007"},
+  {id:"LICZ_W_GRUDZ_R-0-SU010", name:"Woda/Kwiaciarnia Anna",           num:"9089440",              u:"W",bld:"R",fl:"0",  pr:"SU010"},
+  {id:"LICZ_W_GRUDZ_R-0-SU013", name:"Woda/MaxiZoo",                    num:"838516/09",            u:"W",bld:"R",fl:"0",  pr:"SU013"},
+  {id:"LICZ_P_GRUDZ_O_Pod",     name:"En.el.podstawa/budynek",          num:"96250378",             u:"P",bld:"O",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_O_Rez",     name:"En.el.rezerwa/budynek",           num:"96636295",             u:"P",bld:"O",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_O-0-B0002", name:"En.el./KIK",                      num:"96249888",             u:"P",bld:"O",fl:"0",  pr:"B0002"},
+  {id:"LICZ_P_GRUDZ_O-2-B0001", name:"En.el./administracja FIZAR",      num:"73527176456",          u:"P",bld:"O",fl:"2",  pr:"B0001"},
+  {id:"LICZ_P_GRUDZ_O-2-B002A/B002B",name:"En.el./PUM Cybak Adamaszek", num:"73527176464000",       u:"P",bld:"O",fl:"2",  pr:"B002A/B002B"},
+  {id:"LICZ_P_GRUDZ_O-2-B003A", name:"En.el./Strefa Uroda",             num:"9493121-1995",         u:"P",bld:"O",fl:"2",  pr:"B003A"},
+  {id:"LICZ_P_GRUDZ_O-2-B003B", name:"En.el./ISPL Małgorzata Drozd",   num:"",                     u:"P",bld:"O",fl:"2",  pr:"B003B"},
+  {id:"LICZ_P_GRUDZ_O-2-B0004", name:"En.el./Agnieszka Gruca",         num:"6846176",              u:"P",bld:"O",fl:"2",  pr:"B0004"},
+  {id:"LICZ_P_GRUDZ_O-2-B0005", name:"En.el./vacant",                   num:"00735-27200132-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0005"},
+  {id:"LICZ_P_GRUDZ_O-2-B0006", name:"En.el./Sklepy Komfort",           num:"00735-27199191-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0006"},
+  {id:"LICZ_P_GRUDZ_O-2-B0007", name:"En.el./Multimedia",               num:"00735-27199518-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0007"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_1",name:"En.el./Multimedia",             num:"15141210",             u:"P",bld:"O",fl:"2",  pr:"B0008_1"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_2",name:"En.el./Multimedia",             num:"01085-1301-1252-04",   u:"P",bld:"O",fl:"2",  pr:"B0008_2"},
+  {id:"LICZ_P_GRUDZ_O-2-B0009", name:"En.el./Multimedia",               num:"14795413",             u:"P",bld:"O",fl:"2",  pr:"B0009"},
+  {id:"LICZ_P_GRUDZ_O-2-B0010", name:"En.el./TEB",                      num:"14355262",             u:"P",bld:"O",fl:"2",  pr:"B0010"},
+  {id:"LICZ_P_GRUDZ_O-2-B0011", name:"En.el./TEB",                      num:"13773645",             u:"P",bld:"O",fl:"2",  pr:"B0011"},
+  {id:"LICZ_P_GRUDZ_O-2-B0012", name:"En.el./TEB",                      num:"00735-27199952-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0012"},
+  {id:"LICZ_P_GRUDZ_O-2-B0013", name:"En.el./TEB",                      num:"00735-27199735-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0013"},
+  {id:"LICZ_P_GRUDZ_O-2-B0014", name:"En.el./TEB",                      num:"00735-27199520-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0014"},
+  {id:"LICZ_P_GRUDZ_O-2-B0015", name:"En.el./TEB",                      num:"1435106",              u:"P",bld:"O",fl:"2",  pr:"B0015"},
+  {id:"LICZ_P_GRUDZ_O-2-B0016", name:"En.el./Esthetic Dental",          num:"00735-27199758",       u:"P",bld:"O",fl:"2",  pr:"B0016"},
+  {id:"LICZ_P_GRUDZ_O-2-B0017/B0018",name:"En.el./Esthetic Dental",    num:"00735-27200119-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0017/B0018"},
+  {id:"LICZ_P_GRUDZ_O-2-B0019", name:"En.el./vacant",                   num:"00735-27199936-00-0",  u:"P",bld:"O",fl:"2",  pr:"B0019"},
+  {id:"LICZ_P_GRUDZ_O-3-B0001", name:"En.el./PPL Tomasz Żary",          num:"00735-27161870-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0001"},
+  {id:"LICZ_P_GRUDZ_O-3-B0002", name:"En.el./TEB",                      num:"14352305",             u:"P",bld:"O",fl:"3",  pr:"B0002"},
+  {id:"LICZ_P_GRUDZ_O-3-B0004", name:"En.el./TEB",                      num:"00735-27161857-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0004"},
+  {id:"LICZ_P_GRUDZ_O-3-B0005", name:"En.el./TEB",                      num:"00735-27168037-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0005"},
+  {id:"LICZ_P_GRUDZ_O-3-B0006", name:"En.el./AMI Bogumiła Kranc",       num:"12369605",             u:"P",bld:"O",fl:"3",  pr:"B0006"},
+  {id:"LICZ_P_GRUDZ_O-3-B0007", name:"En.el./TEB",                      num:"00735-27199183-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0007"},
+  {id:"LICZ_P_GRUDZ_O-3-B0008", name:"En.el./Pink Flat",                num:"00735-27199184-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0008"},
+  {id:"LICZ_P_GRUDZ_O-3-B0009", name:"En.el./Grupa Wena",               num:"00735-27494959-00-0",  u:"P",bld:"O",fl:"3",  pr:"B0009"},
+  {id:"LICZ_P_GRUDZ_O-3-B0010", name:"En.el./TEB",                      num:"13774915",             u:"P",bld:"O",fl:"3",  pr:"B0010"},
+  {id:"LICZ_P_GRUDZ_R_Pod",     name:"En.el.podstawa/budynek",          num:"58003566",             u:"P",bld:"R",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_R_Rez",     name:"En.el.rezerwa/budynek",           num:"94267032",             u:"P",bld:"R",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_R_RAGRCHL", name:"En.el.Woda lodowa/budynek",       num:"B00022",               u:"P",bld:"R",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_R_RWENT",   name:"En.el.Wentylacja/budynek",        num:"11960",                u:"P",bld:"R",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_R_RKLIMAH", name:"En.el.Klimakonwektory/pasaż",     num:"IEC61036",             u:"P",bld:"R",fl:null,pr:null},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_1",name:"En.el./Hildebrandt",            num:"IEC62052-11",          u:"P",bld:"R",fl:"0",  pr:"SU001_1"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_2",name:"En.el.Wentylacja/Hildebrandt",  num:"10829",                u:"P",bld:"R",fl:"0",  pr:"SU001_2"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_3",name:"En.el.Woda lod./Hildebrandt",   num:"E00075",               u:"P",bld:"R",fl:"0",  pr:"SU001_3"},
+  {id:"LICZ_P_GRUDZ_R-0-SU002", name:"En.el./vacant",                   num:"21103277",             u:"P",bld:"R",fl:"0",  pr:"SU002"},
+  {id:"LICZ_P_GRUDZ_R-0-SU003-4",name:"En.el./Euro-Net",               num:"IEC31036",             u:"P",bld:"R",fl:"0",  pr:"SU003-4"},
+  {id:"LICZ_P_GRUDZ_R-0-SU005", name:"En.el./Rossmann",                 num:"12997",                u:"P",bld:"R",fl:"0",  pr:"SU005"},
+  {id:"LICZ_P_GRUDZ_R-0-SU006", name:"En.el./Gold Investments",         num:"13008",                u:"P",bld:"R",fl:"0",  pr:"SU006"},
+  {id:"LICZ_P_GRUDZ_R-0-SU007", name:"En.el./Cefarm",                   num:"12988",                u:"P",bld:"R",fl:"0",  pr:"SU007"},
+  {id:"LICZ_P_GRUDZ_R-0-SU008", name:"En.el./NorthPress",               num:"12977",                u:"P",bld:"R",fl:"0",  pr:"SU008"},
+  {id:"LICZ_P_GRUDZ_R-0-SU009", name:"En.el./vacant",                   num:"10853",                u:"P",bld:"R",fl:"0",  pr:"SU009"},
+  {id:"LICZ_P_GRUDZ_R-0-SU010", name:"En.el./Kwiaciarnia Anna",         num:"10838",                u:"P",bld:"R",fl:"0",  pr:"SU010"},
+  {id:"LICZ_P_GRUDZ_R-0-SU011", name:"En.el./MBM",                      num:"10845",                u:"P",bld:"R",fl:"0",  pr:"SU011"},
+  {id:"LICZ_P_GRUDZ_R-0-SU012", name:"En.el./vacant",                   num:"10843",                u:"P",bld:"R",fl:"0",  pr:"SU012"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_1",name:"En.el./MaxiZoo",                num:"10854",                u:"P",bld:"R",fl:"0",  pr:"SU013_1"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_2",name:"En.el.Wentylacja/MaxiZoo",      num:"10831",                u:"P",bld:"R",fl:"0",  pr:"SU013_2"},
+  {id:"LICZ_P_GRUDZ_R-0-SU014", name:"En.el./MBM",                      num:"10822",                u:"P",bld:"R",fl:"0",  pr:"SU014"},
+  {id:"LICZ_P_GRUDZ_R-0-SU015", name:"En.el./PKO BP",                   num:"10833",                u:"P",bld:"R",fl:"0",  pr:"SU015"},
+];
+
+const BLDG_LABEL = {O:'Biurowy', R:'Handlowy', X:'Wspólny'};
+
+let fU = 'all', fB = 'all';
+
+function filtered() {
+  return METERS.filter(m =>
+    (fU==='all' || m.u===fU) &&
+    (fB==='all' || m.bld===fB)
+  );
+}
+
+// Filter button helpers
+function fu(v) {
+  fU = v;
+  ['all','C','W','P'].forEach(k => {
+    const btn = document.getElementById('fu-'+k);
+    btn.className = 'fb' + (k===v ? ' on-'+v : '');
+  });
+  renderGrid();
+}
+function fb(v) {
+  fB = v;
+  ['all','O','R'].forEach(k => {
+    const btn = document.getElementById('fb-'+k);
+    btn.className = 'fb' + (k===v ? ' on-'+v : '');
+  });
+  renderGrid();
+}
+window.fu = fu; window.fb = fb;
+
+// ── Sticker HTML helper ──
+function stickerContent(m, forPrint) {
+  const bldg  = BLDG_LABEL[m.bld] || m.bld;
+  const floor = m.fl !== null ? `P${m.fl}` : null;
+  const prem  = m.pr || null;
+
+  if (forPrint) {
+    return `
+      <span class="ps-util ${m.u}">${m.u==='C'?'Ciepło':m.u==='W'?'Woda':'Prąd'}</span>
+      <div class="ps-qr qr-target"></div>
+      <span class="ps-bldg">${bldg}</span>
+      ${floor||prem
+        ? `<div style="display:flex;gap:2mm;align-items:baseline">
+             ${floor?`<span class="ps-floor">${floor}</span>`:''}
+             ${prem ?`<span class="ps-prem">${prem}</span>`:''}
+           </div>`
+        : `<span class="ps-shared">wspólny</span>`}
+      <span class="ps-name">${m.name}</span>
+      <span class="ps-id">${m.id}</span>
+    `;
+  } else {
+    return `
+      <span class="c-util ${m.u}">${m.u==='C'?'Ciepło':m.u==='W'?'Woda':'Prąd'}</span>
+      <div class="qr-target" style="width:72px;height:72px"></div>
+      <span class="c-bldg">${bldg}</span>
+      ${floor||prem
+        ? `<span class="c-loc">${floor||''} ${prem||''}</span>`
+        : `<span class="c-shared">wspólny</span>`}
+      <span class="c-name">${m.name}</span>
+      <span class="c-id">${m.id}</span>
+    `;
+  }
+}
+
+function makeQR(id, size) {
+  // Use qrcode-generator library: qr(typeNumber, errorCorrectionLevel)
+  const qr = qrcode(0, 'M');
+  qr.addData(id);
+  qr.make();
+  // Draw to canvas manually
+  const canvas = document.createElement('canvas');
+  const moduleCount = qr.getModuleCount();
+  const cellSize = Math.floor(size / moduleCount);
+  const margin = Math.floor(cellSize * 1);
+  canvas.width  = moduleCount * cellSize + margin * 2;
+  canvas.height = moduleCount * cellSize + margin * 2;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#ffffff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000000';
+  for (let row = 0; row < moduleCount; row++) {
+    for (let col = 0; col < moduleCount; col++) {
+      if (qr.isDark(row, col)) {
+        ctx.fillRect(margin + col * cellSize, margin + row * cellSize, cellSize, cellSize);
+      }
+    }
+  }
+  return canvas;
+}
+
+async function renderQR(container, id, size) {
+  try {
+    const canvas = makeQR(id, size);
+    canvas.style.width  = size + 'px';
+    canvas.style.height = size + 'px';
+    container.appendChild(canvas);
+  } catch(e) { console.warn('QR error', id, e); }
+}
+
+async function renderGrid() {
+  const list = filtered();
+  const grid = document.getElementById('grid');
+  const empty = document.getElementById('empty');
+  document.getElementById('cnt').textContent = list.length;
+
+  if (!list.length) {
+    grid.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+  grid.innerHTML = '';
+
+  for (const m of list) {
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.innerHTML = stickerContent(m, false);
+    grid.appendChild(card);
+    const container = card.querySelector('.qr-target');
+    await renderQR(container, m.id, 72);
+  }
+}
+
+async function doPrint() {
+  const list = filtered();
+  if (!list.length) return;
+
+  const sheet = document.getElementById('psheet');
+  sheet.innerHTML = '';
+
+  const PER_PAGE = 20; // 5×4 landscape
+  const pages = Math.ceil(list.length / PER_PAGE);
+
+  for (let p = 0; p < pages; p++) {
+    const pg = document.createElement('div');
+    pg.className = 'ppage';
+    const slice = list.slice(p*PER_PAGE, (p+1)*PER_PAGE);
+
+    for (const m of slice) {
+      const s = document.createElement('div');
+      s.className = 'ps';
+      s.innerHTML = stickerContent(m, true);
+      pg.appendChild(s);
+      const container = s.querySelector('.qr-target');
+      await renderQR(container, m.id, 76);
+    }
+    // Empty fillers
+    for (let i = slice.length; i < PER_PAGE; i++) {
+      const e = document.createElement('div');
+      e.className = 'ps ps-empty';
+      pg.appendChild(e);
+    }
+    sheet.appendChild(pg);
+  }
+
+  window.print();
+}
+window.doPrint = doPrint;
+
+// Init
+document.addEventListener('DOMContentLoaded', renderGrid);
+</script>
 </body>
 </html>
