@@ -1,1 +1,833 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Fizar — Odczyty | Grudziądz</title>
+<!-- Tesseract.js for offline OCR -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
+<!-- QR scanner -->
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0f1117; --surface:#181c27; --surface2:#1e2435;
+    --border:#2a3148; --accent:#3b82f6; --text:#e2e8f0; --muted:#64748b;
+    --green:#22c55e; --green-bg:rgba(34,197,94,.12);
+    --red:#ef4444; --red-bg:rgba(239,68,68,.12);
+    --yellow:#f59e0b; --yellow-bg:rgba(245,158,11,.12);
+    --heat:#ef4444; --water:#06b6d4; --elec:#f59e0b;
+  }
+  * { box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent; }
+  body { background:var(--bg); color:var(--text); font-family:'IBM Plex Sans',sans-serif;
+    font-size:15px; min-height:100vh; }
 
+  /* ── Header ── */
+  header { background:var(--surface); border-bottom:1px solid var(--border);
+    padding:14px 20px; display:flex; align-items:center; gap:12px; position:sticky; top:0; z-index:100; }
+  .logo { font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:16px; color:var(--accent); }
+  .logo span { color:var(--muted); font-weight:400; }
+  .progress-bar { flex:1; height:6px; background:var(--border); border-radius:3px; overflow:hidden; }
+  .progress-fill { height:100%; background:var(--accent); border-radius:3px; transition:width .3s; }
+  .progress-text { font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--muted); white-space:nowrap; }
+
+  /* ── Panels ── */
+  .panel { display:none; }
+  .panel.active { display:block; }
+
+  /* ── Setup panel ── */
+  #panel-setup { max-width:520px; margin:40px auto; padding:0 20px; }
+  .setup-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px; margin-bottom:16px; }
+  .setup-card h2 { font-size:17px; font-weight:500; margin-bottom:6px; }
+  .setup-card p  { font-size:13px; color:var(--muted); margin-bottom:20px; line-height:1.5; }
+  .upload-zone { border:2px dashed var(--border); border-radius:8px; padding:32px; text-align:center;
+    cursor:pointer; transition:border-color .2s; }
+  .upload-zone:hover { border-color:var(--accent); }
+  .upload-zone input { display:none; }
+  .upload-label { display:inline-block; margin-top:12px; padding:8px 20px; background:var(--accent);
+    color:#fff; border-radius:6px; font-size:13px; font-weight:500; cursor:pointer; }
+  .upload-success { background:var(--green-bg); border:1px solid var(--green);
+    border-radius:8px; padding:12px 16px; font-size:13px; color:var(--green); display:none; }
+  .date-badge { font-family:'IBM Plex Mono',monospace; font-weight:600; }
+
+  .field-row { display:flex; flex-direction:column; gap:6px; margin-bottom:14px; }
+  .field-row label { font-size:12px; color:var(--muted); }
+  .field-row input, .field-row select {
+    padding:10px 14px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:6px; color:var(--text); font-size:14px; font-family:'IBM Plex Sans',sans-serif; }
+  .field-row input:focus, .field-row select:focus { outline:none; border-color:var(--accent); }
+
+  .btn-start { width:100%; padding:14px; background:var(--accent); color:#fff; border:none;
+    border-radius:8px; font-size:16px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; transition:background .2s; }
+  .btn-start:hover { background:#1d4ed8; }
+  .btn-start:disabled { opacity:.4; cursor:not-allowed; }
+
+  /* ── Reading panel ── */
+  #panel-read { max-width:540px; margin:0 auto; padding:20px; }
+
+  /* Group header */
+  .group-header { display:flex; align-items:center; gap:10px; margin:24px 0 12px;
+    padding-bottom:10px; border-bottom:1px solid var(--border); }
+  .group-icon { font-size:20px; }
+  .group-title { font-size:16px; font-weight:600; }
+  .group-count { font-family:'IBM Plex Mono',monospace; font-size:11px; font-weight:600;
+    padding:3px 8px; border-radius:20px; background:rgba(59,130,246,.12); color:var(--accent); }
+
+  /* Meter card */
+  .meter-card {
+    background:var(--surface); border:1px solid var(--border); border-radius:10px;
+    margin-bottom:10px; overflow:hidden; transition:border-color .2s;
+  }
+  .meter-card.done   { border-left:3px solid var(--green); }
+  .meter-card.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .meter-card.warning{ border-left:3px solid var(--yellow); }
+  .meter-card.error  { border-left:3px solid var(--red); }
+
+  .mc-header { padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; }
+  .mc-status { width:10px; height:10px; border-radius:50%; background:var(--border); flex-shrink:0; }
+  .meter-card.done   .mc-status { background:var(--green); }
+  .meter-card.active .mc-status { background:var(--accent); }
+  .meter-card.warning .mc-status{ background:var(--yellow); }
+  .mc-info { flex:1; min-width:0; }
+  .mc-name { font-weight:600; font-size:14px; }
+  .mc-loc  { font-size:11px; color:var(--muted); font-family:'IBM Plex Mono',monospace; margin-top:2px; }
+  .mc-prev { font-family:'IBM Plex Mono',monospace; font-size:13px; color:var(--muted);
+    text-align:right; flex-shrink:0; }
+  .mc-prev small { display:block; font-size:10px; color:var(--muted); opacity:.6; }
+
+  /* Input area */
+  .mc-body { display:none; padding:0 16px 16px; }
+  .meter-card.active .mc-body { display:block; }
+
+  .reading-row { display:flex; gap:10px; align-items:flex-end; margin-bottom:12px; }
+  .reading-input-wrap { flex:1; }
+  .reading-input-wrap label { display:block; font-size:11px; color:var(--muted); margin-bottom:5px; }
+  .reading-input {
+    width:100%; padding:14px 16px; background:var(--surface2); border:2px solid var(--border);
+    border-radius:8px; color:var(--text); font-size:22px; font-weight:600;
+    font-family:'IBM Plex Mono',monospace; text-align:right; transition:border-color .2s;
+  }
+  .reading-input:focus { outline:none; border-color:var(--accent); }
+  .reading-input.ok    { border-color:var(--green); }
+  .reading-input.warn  { border-color:var(--yellow); }
+  .reading-input.bad   { border-color:var(--red); }
+
+  .diff-row { display:flex; justify-content:space-between; align-items:center;
+    padding:8px 12px; border-radius:6px; background:var(--surface2); margin-bottom:12px;
+    font-family:'IBM Plex Mono',monospace; font-size:13px; }
+  .diff-ok   { color:var(--green); }
+  .diff-warn { color:var(--yellow); }
+  .diff-bad  { color:var(--red); }
+
+  /* OCR button */
+  .btn-ocr { padding:10px 16px; background:var(--surface2); border:1px solid var(--border);
+    border-radius:7px; color:var(--text); font-size:13px; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; display:flex; align-items:center; gap:6px;
+    transition:border-color .2s; white-space:nowrap; }
+  .btn-ocr:hover { border-color:var(--accent); }
+  .btn-ocr:disabled { opacity:.4; cursor:not-allowed; }
+
+  .ocr-status { font-size:11px; color:var(--muted); margin-bottom:8px; min-height:16px; }
+
+  /* Action buttons */
+  .action-row { display:flex; gap:8px; }
+  .btn-confirm { flex:1; padding:12px; background:var(--green); color:#fff; border:none;
+    border-radius:7px; font-size:14px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; transition:background .2s; }
+  .btn-confirm:hover { background:#16a34a; }
+  .btn-confirm:disabled { opacity:.4; cursor:not-allowed; }
+  .btn-skip { padding:12px 16px; background:transparent; border:1px solid var(--border);
+    border-radius:7px; color:var(--muted); font-size:13px; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; }
+  .btn-skip:hover { border-color:var(--muted); color:var(--text); }
+
+  /* Hidden file input for OCR */
+  #ocrFileInput { display:none; }
+
+  /* ── Done panel ── */
+  #panel-done { text-align:center; padding:60px 20px; max-width:520px; margin:0 auto; }
+  #panel-done .check { font-size:56px; margin-bottom:20px; }
+  #panel-done h2 { font-size:22px; font-weight:500; margin-bottom:10px; }
+  #panel-done p { color:var(--muted); margin-bottom:28px; font-size:14px; }
+  .stats-row { display:flex; gap:12px; justify-content:center; margin-bottom:28px; flex-wrap:wrap; }
+  .stat-pill { padding:8px 16px; border-radius:8px; font-family:'IBM Plex Mono',monospace;
+    font-size:13px; font-weight:600; }
+  .stat-done { background:var(--green-bg); color:var(--green); }
+  .stat-skip { background:var(--yellow-bg); color:var(--yellow); }
+  .btn-download { padding:14px 32px; background:var(--accent); color:#fff; border:none;
+    border-radius:8px; font-size:15px; font-weight:600; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; transition:background .2s; }
+  .btn-download:hover { background:#1d4ed8; }
+  .btn-restart { margin-top:12px; padding:10px 24px; background:transparent; color:var(--muted);
+    border:1px solid var(--border); border-radius:6px; font-size:13px; cursor:pointer;
+    font-family:'IBM Plex Sans',sans-serif; display:block; margin:12px auto 0; }
+
+  /* ── Camera modal ── */
+  #cameraModal {
+    display:none; position:fixed; inset:0; background:rgba(0,0,0,.9);
+    z-index:200; flex-direction:column; align-items:center; justify-content:center;
+  }
+  #cameraModal.open { display:flex; }
+  #cameraVideo { width:100%; max-width:480px; border-radius:8px; }
+  .camera-hint { color:#fff; font-size:13px; margin:12px 0; opacity:.7; text-align:center; }
+  .camera-actions { display:flex; gap:12px; margin-top:8px; }
+  .btn-snap { padding:14px 32px; background:var(--accent); color:#fff; border:none;
+    border-radius:8px; font-size:15px; font-weight:600; cursor:pointer; }
+  .btn-cancel-cam { padding:14px 24px; background:transparent; color:#fff;
+    border:1px solid rgba(255,255,255,.3); border-radius:8px; font-size:15px; cursor:pointer; }
+  #cameraCanvas { display:none; }
+
+  /* Utility colors inline */
+  .u-C { color:var(--heat); }
+  .u-W { color:var(--water); }
+  .u-P { color:var(--elec); }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FIZAR<span>.odczyty</span></div>
+  <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+  <div class="progress-text" id="progressText">0 / 0</div>
+</header>
+
+<!-- ── Panel 1: Setup ── -->
+<div class="panel active" id="panel-setup">
+  <div id="setup-inner" style="max-width:520px;margin:40px auto;padding:0 20px">
+
+    <div class="setup-card">
+      <h2>1. Wczytaj poprzednie odczyty</h2>
+      <p>Wgraj plik Excel z odczytami liczników. Aplikacja odczyta ostatnią kolumnę z danymi jako wartości referencyjne.</p>
+      <div class="upload-zone" onclick="document.getElementById('xlsxInput').click()">
+        <div style="font-size:32px;margin-bottom:8px">📊</div>
+        <div style="font-size:14px;color:var(--muted)">Kliknij lub przeciągnij plik Excel</div>
+        <label class="upload-label">Wybierz plik</label>
+        <input type="file" id="xlsxInput" accept=".xlsx,.xlsm">
+      </div>
+      <div class="upload-success" id="uploadSuccess">
+        ✓ Wczytano odczyty z dnia <span class="date-badge" id="refDateBadge">—</span>
+        — <span id="refCountBadge">0</span> liczników
+      </div>
+    </div>
+
+    <div class="setup-card">
+      <h2>2. Parametry sesji</h2>
+      <p>Uzupełnij datę bieżącego odczytu.</p>
+      <div class="field-row">
+        <label>Data odczytu</label>
+        <input type="date" id="readingDate">
+      </div>
+      <div class="field-row">
+        <label>Odczytujący</label>
+        <input type="text" id="readerName" placeholder="Imię i nazwisko">
+      </div>
+    </div>
+
+    <button class="btn-start" id="btnStart" onclick="startSession()" disabled>
+      Rozpocznij odczyty →
+    </button>
+  </div>
+</div>
+
+<!-- ── Panel 2: Reading ── -->
+<div class="panel" id="panel-read">
+  <div id="meterList"></div>
+  <div style="height:80px"></div>
+  <div style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);
+    border-top:1px solid var(--border);padding:12px 20px;display:flex;gap:10px;
+    max-width:540px;margin:0 auto;left:50%;transform:translateX(-50%)">
+    <button onclick="finishSession()" style="flex:1;padding:12px;background:var(--surface2);
+      border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:14px;
+      font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">
+      Zakończ i pobierz JSON
+    </button>
+  </div>
+</div>
+
+<!-- ── Panel 3: Done ── -->
+<div class="panel" id="panel-done">
+  <div class="check">✅</div>
+  <h2>Odczyty zakończone</h2>
+  <p id="doneDesc"></p>
+  <div class="stats-row">
+    <div class="stat-pill stat-done" id="statDone">— odczytów</div>
+    <div class="stat-pill stat-skip" id="statSkip">— pominięto</div>
+  </div>
+  <button class="btn-download" onclick="downloadJSON()">⬇ Pobierz plik JSON</button>
+  <button class="btn-restart" onclick="location.reload()">← Nowa sesja</button>
+</div>
+
+<!-- ── Camera modal ── -->
+<div id="cameraModal">
+  <video id="cameraVideo" autoplay playsinline></video>
+  <canvas id="cameraCanvas"></canvas>
+  <p class="camera-hint">Skieruj kamerę na wyświetlacz licznika i zrób zdjęcie</p>
+  <div class="camera-actions">
+    <button class="btn-snap" onclick="snapPhoto()">📷 Zdjęcie</button>
+    <button class="btn-cancel-cam" onclick="closeCamera()">Anuluj</button>
+  </div>
+</div>
+
+<!-- Hidden OCR file input (fallback for no camera) -->
+<input type="file" id="ocrFileInput" accept="image/*" capture="environment">
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+const METERS = [
+  {id:"LICZ_C_GRUDZ_O",          name:"Ciepło b.biurowy/budynek",         u:"C",bld:"O",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_O-0-B0002",  name:"Ciepło b.biurowy/KIK",            u:"C",bld:"O",fl:"0",  pr:"B0002",unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R_1",        name:"Ciepło/budynek C.O.",             u:"C",bld:"R",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R_2",        name:"Ciepło/budynek WE",               u:"C",bld:"R",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_1",name:"Ciepło/Hildebrandt CO",          u:"C",bld:"R",fl:"0",  pr:"SU001_1",unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_2",name:"Ciepło/Hildebrandt WE",          u:"C",bld:"R",fl:"0",  pr:"SU001_2",unit:"GJ"},
+  {id:"LICZ_W_GRUDZ",            name:"Woda/UniaPark główny",            u:"W",bld:"X",fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O",          name:"Woda/budynek główny biurowy",     u:"W",bld:"O",fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-0-B0002",  name:"Woda/KIK",                       u:"W",bld:"O",fl:"0",  pr:"B0002",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_1",name:"Woda_1/Edicon",                  u:"W",bld:"O",fl:"1",  pr:"B0003_1",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_2",name:"Woda_2/Edicon",                  u:"W",bld:"O",fl:"1",  pr:"B0003_2",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B003A",  name:"Woda/Strefa Uroda",              u:"W",bld:"O",fl:"2",  pr:"B003A",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0004",  name:"Woda/Agnieszka Gruca",           u:"W",bld:"O",fl:"2",  pr:"B0004",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0006",  name:"Woda/Sklepy Komfort",            u:"W",bld:"O",fl:"2",  pr:"B0006",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0015B", name:"Woda/TEB",                       u:"W",bld:"O",fl:"2",  pr:"B0015B",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0016",  name:"Woda/Esthetic Dental",           u:"W",bld:"O",fl:"2",  pr:"B0016",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0019",  name:"Woda/Klinika Ust",               u:"W",bld:"O",fl:"2",  pr:"B0019",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-3-B0001",  name:"Woda/PPL Tomasz Żary",           u:"W",bld:"O",fl:"3",  pr:"B0001",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU001",  name:"Woda/Hildebrandt",               u:"W",bld:"R",fl:"0",  pr:"SU001",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU002",  name:"Woda/vacant",                    u:"W",bld:"R",fl:"0",  pr:"SU002",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU003-4",name:"Woda/Euro-Net",                  u:"W",bld:"R",fl:"0",  pr:"SU003-4",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU005",  name:"Woda/Rossmann",                  u:"W",bld:"R",fl:"0",  pr:"SU005",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU006",  name:"Woda/Gold Investments",          u:"W",bld:"R",fl:"0",  pr:"SU006",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU007",  name:"Woda/Cefarm",                    u:"W",bld:"R",fl:"0",  pr:"SU007",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU010",  name:"Woda/Kwiaciarnia Anna",          u:"W",bld:"R",fl:"0",  pr:"SU010",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU013",  name:"Woda/MaxiZoo",                   u:"W",bld:"R",fl:"0",  pr:"SU013",unit:"m³"},
+  {id:"LICZ_P_GRUDZ_O_Pod",      name:"En.el.podstawa/budynek",         u:"P",bld:"O",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O_Rez",      name:"En.el.rezerwa/budynek",          u:"P",bld:"O",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-0-B0002",  name:"En.el./KIK",                     u:"P",bld:"O",fl:"0",  pr:"B0002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0001",  name:"En.el./administracja FIZAR",     u:"P",bld:"O",fl:"2",  pr:"B0001",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B002A/B002B",name:"En.el./PUM Cybak Adamaszek", u:"P",bld:"O",fl:"2",  pr:"B002A/B002B",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B003A",  name:"En.el./Strefa Uroda",            u:"P",bld:"O",fl:"2",  pr:"B003A",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B003B",  name:"En.el./ISPL Małgorzata Drozd",  u:"P",bld:"O",fl:"2",  pr:"B003B",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0004",  name:"En.el./Agnieszka Gruca",        u:"P",bld:"O",fl:"2",  pr:"B0004",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0005",  name:"En.el./vacant",                  u:"P",bld:"O",fl:"2",  pr:"B0005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0006",  name:"En.el./Sklepy Komfort",          u:"P",bld:"O",fl:"2",  pr:"B0006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0007",  name:"En.el./Multimedia",              u:"P",bld:"O",fl:"2",  pr:"B0007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_1",name:"En.el./Multimedia",             u:"P",bld:"O",fl:"2",  pr:"B0008_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_2",name:"En.el./Multimedia",             u:"P",bld:"O",fl:"2",  pr:"B0008_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0009",  name:"En.el./Multimedia",              u:"P",bld:"O",fl:"2",  pr:"B0009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0010",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0011",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0011",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0012",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0012",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0013",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0013",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0014",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0014",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0015",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0015",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0016",  name:"En.el./Esthetic Dental",         u:"P",bld:"O",fl:"2",  pr:"B0016",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0017/B0018",name:"En.el./Esthetic Dental",    u:"P",bld:"O",fl:"2",  pr:"B0017/B0018",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0019",  name:"En.el./vacant",                  u:"P",bld:"O",fl:"2",  pr:"B0019",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0001",  name:"En.el./PPL Tomasz Żary",         u:"P",bld:"O",fl:"3",  pr:"B0001",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0002",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0004",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0004",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0005",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0006",  name:"En.el./AMI Bogumiła Kranc",      u:"P",bld:"O",fl:"3",  pr:"B0006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0007",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0008",  name:"En.el./Pink Flat",               u:"P",bld:"O",fl:"3",  pr:"B0008",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0009",  name:"En.el./Grupa Wena",              u:"P",bld:"O",fl:"3",  pr:"B0009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0010",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_Pod",      name:"En.el.podstawa/budynek R",       u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_Rez",      name:"En.el.rezerwa/budynek R",        u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RAGRCHL",  name:"En.el.Woda lodowa/budynek",      u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RWENT",    name:"En.el.Wentylacja/budynek",       u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RKLIMAH",  name:"En.el.Klimakonwektory/pasaż",    u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_1",name:"En.el./Hildebrandt",            u:"P",bld:"R",fl:"0",  pr:"SU001_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_2",name:"En.el.Wentylacja/Hildebrandt",  u:"P",bld:"R",fl:"0",  pr:"SU001_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_3",name:"En.el.Woda lod./Hildebrandt",   u:"P",bld:"R",fl:"0",  pr:"SU001_3",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU002",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU003-4",name:"En.el./Euro-Net",               u:"P",bld:"R",fl:"0",  pr:"SU003-4",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU005",  name:"En.el./Rossmann",                u:"P",bld:"R",fl:"0",  pr:"SU005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU006",  name:"En.el./Gold Investments",        u:"P",bld:"R",fl:"0",  pr:"SU006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU007",  name:"En.el./Cefarm",                  u:"P",bld:"R",fl:"0",  pr:"SU007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU008",  name:"En.el./NorthPress",              u:"P",bld:"R",fl:"0",  pr:"SU008",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU009",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU010",  name:"En.el./Kwiaciarnia Anna",        u:"P",bld:"R",fl:"0",  pr:"SU010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU011",  name:"En.el./MBM",                     u:"P",bld:"R",fl:"0",  pr:"SU011",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU012",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU012",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_1",name:"En.el./MaxiZoo",                u:"P",bld:"R",fl:"0",  pr:"SU013_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_2",name:"En.el.Wentylacja/MaxiZoo",      u:"P",bld:"R",fl:"0",  pr:"SU013_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU014",  name:"En.el./MBM",                     u:"P",bld:"R",fl:"0",  pr:"SU014",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU015",  name:"En.el./PKO BP",                  u:"P",bld:"R",fl:"0",  pr:"SU015",unit:"kWh"},
+];
+
+const GROUPS = [
+  { u:'C', label:'Ciepło', icon:'🔴' },
+  { u:'W', label:'Woda',   icon:'🔵' },
+  { u:'P', label:'Prąd',   icon:'🟡' },
+];
+const BLDG = {O:'Biurowy', R:'Handlowy', X:'Wspólny'};
+
+let prevReadings = {};  // id -> value
+let refDate = '';
+let readingDate = '';
+let readerName = '';
+let readings = {};  // id -> {value, skipped, ocrUsed}
+let activeMeterId = null;
+let currentOcrMeterId = null;
+let cameraStream = null;
+let tesseractWorker = null;
+
+// ── Setup ─────────────────────────────────────────────────────────────────
+// Default today's date
+document.getElementById('readingDate').value = new Date().toISOString().slice(0,10);
+
+document.getElementById('xlsxInput').addEventListener('change', async e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  const ab = await file.arrayBuffer();
+  const wb = XLSX.read(ab, {type:'array'});
+  let count = 0;
+  let lastDate = '';
+
+  for (const sheetName of ['Cieplo','Woda','Prad']) {
+    const ws = wb.Sheets[sheetName];
+    if (!ws) continue;
+    const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+    if (data.length < 2) continue;
+
+    // Row index 1 = header row (0-indexed)
+    const headerRow = data[1];
+
+    // Find last non-empty date column (cols 10+ = index 10+)
+    let lastDateCol = -1;
+    let lastDateVal = '';
+    for (let c = 10; c < headerRow.length; c++) {
+      const v = headerRow[c];
+      if (v && typeof v === 'string' && v.includes('.')) {
+        lastDateCol = c;
+        lastDateVal = v;
+      }
+    }
+    if (lastDateVal) lastDate = lastDateVal;
+
+    // Read readings from that column
+    if (lastDateCol >= 0) {
+      for (let r = 2; r < data.length; r++) {
+        const row = data[r];
+        const id  = row[4]; // col E
+        const val = row[lastDateCol];
+        if (id && typeof id === 'string' && id.startsWith('LICZ') && val !== null) {
+          prevReadings[id] = parseFloat(val) || 0;
+          count++;
+        }
+      }
+    }
+  }
+
+  refDate = lastDate;
+  document.getElementById('refDateBadge').textContent = lastDate;
+  document.getElementById('refCountBadge').textContent = count;
+  document.getElementById('uploadSuccess').style.display = 'block';
+  checkCanStart();
+});
+
+['readingDate','readerName'].forEach(id =>
+  document.getElementById(id).addEventListener('input', checkCanStart));
+
+function checkCanStart() {
+  const hasDate = document.getElementById('readingDate').value;
+  document.getElementById('btnStart').disabled = !hasDate;
+}
+window.checkCanStart = checkCanStart;
+
+// ── Start session ─────────────────────────────────────────────────────────
+function startSession() {
+  readingDate = document.getElementById('readingDate').value;
+  readerName  = document.getElementById('readerName').value || 'nieznany';
+
+  document.getElementById('panel-setup').classList.remove('active');
+  document.getElementById('panel-read').classList.add('active');
+
+  renderMeterList();
+  updateProgress();
+}
+window.startSession = startSession;
+
+// ── Render meter list ─────────────────────────────────────────────────────
+function renderMeterList() {
+  const container = document.getElementById('meterList');
+  container.innerHTML = '';
+
+  for (const group of GROUPS) {
+    const meters = METERS.filter(m => m.u === group.u);
+    if (!meters.length) continue;
+
+    // Group header
+    const gh = document.createElement('div');
+    gh.className = 'group-header';
+    gh.innerHTML = `
+      <span class="group-icon">${group.icon}</span>
+      <span class="group-title">${group.label}</span>
+      <span class="group-count">${meters.length}</span>
+    `;
+    container.appendChild(gh);
+
+    // Meter cards
+    for (const m of meters) {
+      container.appendChild(createMeterCard(m));
+    }
+  }
+
+  // Open first meter automatically
+  if (METERS.length > 0) openMeter(METERS[0].id);
+}
+
+function createMeterCard(m) {
+  const prev = prevReadings[m.id];
+  const prevStr = prev !== undefined ? fmtNum(prev) : '—';
+  const loc = [m.fl !== null ? `P${m.fl}` : null, m.pr].filter(Boolean).join(' · ');
+  const bldg = BLDG[m.bld] || m.bld;
+
+  const card = document.createElement('div');
+  card.className = 'meter-card';
+  card.id = `card-${m.id}`;
+  card.innerHTML = `
+    <div class="mc-header" onclick="openMeter('${m.id}')">
+      <div class="mc-status"></div>
+      <div class="mc-info">
+        <div class="mc-name">${m.name}</div>
+        <div class="mc-loc u-${m.u}">${bldg}${loc ? ' · ' + loc : ''}</div>
+      </div>
+      <div class="mc-prev">
+        ${prevStr} <span style="font-size:10px">${m.unit}</span>
+        <small>${refDate || '—'}</small>
+      </div>
+    </div>
+    <div class="mc-body">
+      <div class="ocr-status" id="ocr-status-${m.id}"></div>
+      <div class="reading-row">
+        <div class="reading-input-wrap">
+          <label>Bieżący odczyt (${m.unit})</label>
+          <input type="number" step="0.01" class="reading-input" id="inp-${m.id}"
+            placeholder="0"
+            oninput="onInputChange('${m.id}')">
+        </div>
+        <button class="btn-ocr" onclick="startOCR('${m.id}')" title="Rozpoznaj z zdjęcia">
+          📷 OCR
+        </button>
+      </div>
+      <div class="diff-row" id="diff-${m.id}" style="display:none">
+        <span>Różnica</span>
+        <span id="diff-val-${m.id}">—</span>
+      </div>
+      <div class="action-row">
+        <button class="btn-confirm" id="btn-confirm-${m.id}"
+          onclick="confirmReading('${m.id}')" disabled>
+          ✓ Zatwierdź
+        </button>
+        <button class="btn-skip" onclick="skipMeter('${m.id}')">Pomiń</button>
+      </div>
+    </div>
+  `;
+  return card;
+}
+
+// ── Open / close meter ────────────────────────────────────────────────────
+function openMeter(id) {
+  // Close previous
+  if (activeMeterId && activeMeterId !== id) {
+    const prev = document.getElementById(`card-${activeMeterId}`);
+    if (prev) prev.classList.remove('active');
+  }
+  activeMeterId = id;
+  const card = document.getElementById(`card-${id}`);
+  if (!card) return;
+  card.classList.add('active');
+  card.scrollIntoView({behavior:'smooth', block:'center'});
+  document.getElementById(`inp-${id}`).focus();
+}
+window.openMeter = openMeter;
+
+// ── Input change → live diff ──────────────────────────────────────────────
+function onInputChange(id) {
+  const inp = document.getElementById(`inp-${id}`);
+  const val = parseFloat(inp.value);
+  const prev = prevReadings[id];
+  const diffRow = document.getElementById(`diff-${id}`);
+  const diffVal = document.getElementById(`diff-val-${id}`);
+  const confirmBtn = document.getElementById(`btn-confirm-${id}`);
+
+  inp.classList.remove('ok','warn','bad');
+
+  if (isNaN(val) || inp.value === '') {
+    diffRow.style.display = 'none';
+    confirmBtn.disabled = true;
+    return;
+  }
+
+  confirmBtn.disabled = false;
+
+  if (prev !== undefined) {
+    diffRow.style.display = 'flex';
+    const diff = val - prev;
+    const diffStr = (diff >= 0 ? '+' : '') + fmtNum(diff);
+    diffVal.textContent = diffStr;
+    diffVal.className = '';
+
+    if (diff < 0) {
+      // Negative diff — error
+      diffVal.classList.add('diff-bad');
+      inp.classList.add('bad');
+      diffVal.textContent = diffStr + ' ⚠️ UJEMNA!';
+    } else if (prev > 0 && diff / prev > 0.5) {
+      // >50% increase — warning
+      diffVal.classList.add('diff-warn');
+      inp.classList.add('warn');
+      diffVal.textContent = diffStr + ' ⚠️ Duży wzrost';
+    } else {
+      diffVal.classList.add('diff-ok');
+      inp.classList.add('ok');
+    }
+  } else {
+    diffRow.style.display = 'none';
+  }
+}
+window.onInputChange = onInputChange;
+
+// ── Confirm reading ───────────────────────────────────────────────────────
+function confirmReading(id) {
+  const val = parseFloat(document.getElementById(`inp-${id}`).value);
+  if (isNaN(val)) return;
+
+  readings[id] = { value: val, skipped: false, ocrUsed: false };
+
+  const card = document.getElementById(`card-${id}`);
+  card.classList.remove('active','warning','error');
+  card.classList.add('done');
+
+  updateProgress();
+  moveToNext(id);
+}
+window.confirmReading = confirmReading;
+
+function skipMeter(id) {
+  readings[id] = { value: null, skipped: true, ocrUsed: false };
+  const card = document.getElementById(`card-${id}`);
+  card.classList.remove('active');
+  card.classList.add('warning');
+  updateProgress();
+  moveToNext(id);
+}
+window.skipMeter = skipMeter;
+
+function moveToNext(currentId) {
+  const idx = METERS.findIndex(m => m.id === currentId);
+  for (let i = idx+1; i < METERS.length; i++) {
+    if (!readings[METERS[i].id]) {
+      openMeter(METERS[i].id);
+      return;
+    }
+  }
+  // All done — auto-finish
+  if (Object.keys(readings).length === METERS.length) finishSession();
+}
+
+// ── Progress ──────────────────────────────────────────────────────────────
+function updateProgress() {
+  const done = Object.values(readings).filter(r => !r.skipped).length;
+  const total = METERS.length;
+  const pct = total > 0 ? Math.round(done / total * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+  document.getElementById('progressText').textContent = `${done} / ${total}`;
+}
+
+// ── OCR ───────────────────────────────────────────────────────────────────
+function startOCR(id) {
+  currentOcrMeterId = id;
+  // Try camera first
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    openCamera(id);
+  } else {
+    // Fallback: file picker
+    const fi = document.getElementById('ocrFileInput');
+    fi.onchange = e => { if (e.target.files[0]) processOcrImage(e.target.files[0], id); };
+    fi.click();
+  }
+}
+window.startOCR = startOCR;
+
+function openCamera(id) {
+  const modal = document.getElementById('cameraModal');
+  modal.classList.add('open');
+  navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false})
+    .then(stream => {
+      cameraStream = stream;
+      document.getElementById('cameraVideo').srcObject = stream;
+    })
+    .catch(() => {
+      closeCamera();
+      // Fallback to file picker
+      const fi = document.getElementById('ocrFileInput');
+      fi.onchange = e => { if (e.target.files[0]) processOcrImage(e.target.files[0], id); };
+      fi.click();
+    });
+}
+
+function closeCamera() {
+  if (cameraStream) { cameraStream.getTracks().forEach(t => t.stop()); cameraStream = null; }
+  document.getElementById('cameraModal').classList.remove('open');
+}
+window.closeCamera = closeCamera;
+
+function snapPhoto() {
+  const video  = document.getElementById('cameraVideo');
+  const canvas = document.getElementById('cameraCanvas');
+  canvas.width  = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  closeCamera();
+  canvas.toBlob(blob => processOcrImage(blob, currentOcrMeterId), 'image/jpeg', 0.95);
+}
+window.snapPhoto = snapPhoto;
+
+async function processOcrImage(blob, id) {
+  const statusEl = document.getElementById(`ocr-status-${id}`);
+  statusEl.textContent = '⏳ Rozpoznawanie cyfr...';
+
+  // Preprocess: convert blob to image, increase contrast
+  const imgUrl = URL.createObjectURL(blob);
+
+  // Try OCR.space (online) first, fallback to Tesseract (offline)
+  let result = null;
+  if (navigator.onLine) {
+    result = await ocrOnline(blob, statusEl);
+  }
+  if (!result) {
+    result = await ocrOffline(imgUrl, statusEl);
+  }
+
+  URL.revokeObjectURL(imgUrl);
+
+  if (result) {
+    const cleaned = result.replace(/[^0-9.,]/g, '').replace(',', '.');
+    const num = parseFloat(cleaned);
+    if (!isNaN(num) && num >= 0) {
+      document.getElementById(`inp-${id}`).value = num;
+      onInputChange(id);
+      statusEl.textContent = `✓ OCR: ${num} (sprawdź i zatwierdź)`;
+      statusEl.style.color = 'var(--green)';
+      readings[id] = readings[id] || {};
+      readings[id].ocrUsed = true;
+    } else {
+      statusEl.textContent = '⚠️ Nie rozpoznano liczby — wpisz ręcznie';
+      statusEl.style.color = 'var(--yellow)';
+    }
+  } else {
+    statusEl.textContent = '⚠️ OCR nie powiodło się — wpisz ręcznie';
+    statusEl.style.color = 'var(--yellow)';
+  }
+}
+
+async function ocrOnline(blob, statusEl) {
+  statusEl.textContent = '⏳ OCR online (OCR.space)...';
+  try {
+    const formData = new FormData();
+    formData.append('file', blob, 'meter.jpg');
+    formData.append('apikey', 'K81579860888957'); // free public key
+    formData.append('language', 'eng');
+    formData.append('isNumeric', 'true');
+    formData.append('scale', 'true');
+    formData.append('OCREngine', '2');
+
+    const res = await fetch('https://api.ocr.space/parse/image', {
+      method: 'POST', body: formData,
+      signal: AbortSignal.timeout(8000)
+    });
+    const data = await res.json();
+    if (data.ParsedResults?.[0]?.ParsedText) {
+      return data.ParsedResults[0].ParsedText.trim();
+    }
+  } catch(e) {
+    console.warn('OCR.space failed:', e);
+  }
+  return null;
+}
+
+async function ocrOffline(imgUrl, statusEl) {
+  statusEl.textContent = '⏳ OCR offline (Tesseract)...';
+  try {
+    if (!tesseractWorker) {
+      tesseractWorker = await Tesseract.createWorker('eng');
+      await tesseractWorker.setParameters({
+        tessedit_char_whitelist: '0123456789.,',
+        tessedit_pageseg_mode: '7', // single line
+      });
+    }
+    const { data } = await tesseractWorker.recognize(imgUrl);
+    return data.text.trim();
+  } catch(e) {
+    console.warn('Tesseract failed:', e);
+    return null;
+  }
+}
+
+// ── Finish & export ───────────────────────────────────────────────────────
+function finishSession() {
+  // Build export
+  const output = {
+    property: 'GRUDZ',
+    readingDate,
+    readerName,
+    refDate,
+    generatedAt: new Date().toISOString(),
+    readings: METERS.map(m => ({
+      id:       m.id,
+      name:     m.name,
+      unit:     m.unit,
+      utility:  m.u,
+      prev:     prevReadings[m.id] ?? null,
+      current:  readings[m.id]?.value ?? null,
+      diff:     (readings[m.id]?.value != null && prevReadings[m.id] != null)
+                  ? readings[m.id].value - prevReadings[m.id]
+                  : null,
+      skipped:  readings[m.id]?.skipped ?? true,
+      ocrUsed:  readings[m.id]?.ocrUsed ?? false,
+    }))
+  };
+
+  window._exportData = output;
+
+  const done = output.readings.filter(r => !r.skipped && r.current !== null).length;
+  const skip = output.readings.filter(r => r.skipped).length;
+
+  document.getElementById('doneDesc').textContent =
+    `Sesja odczytów z dnia ${readingDate} — Grudziądz`;
+  document.getElementById('statDone').textContent = `${done} odczytów`;
+  document.getElementById('statSkip').textContent = `${skip} pominięto`;
+
+  document.getElementById('panel-read').classList.remove('active');
+  document.getElementById('panel-done').classList.add('active');
+}
+window.finishSession = finishSession;
+
+function downloadJSON() {
+  const data = window._exportData;
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `odczyty_GRUDZ_${data.readingDate}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+}
+window.downloadJSON = downloadJSON;
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function fmtNum(n) {
+  if (n === null || n === undefined) return '—';
+  return n.toLocaleString('pl-PL', {minimumFractionDigits:0, maximumFractionDigits:2});
+}
+</script>
+</body>
+</html>
