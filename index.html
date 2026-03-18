@@ -1045,7 +1045,10 @@ async function buildDocx(g, refNo, todayShort, todayLong) {
       new TextRun({text:'78 2490 0005 0000 4530 5504 3074',font:'Arial',size:19}),
     ]}),
     gap(40),
-    p(`Tytuł przelewu: należności czynszowe – ${g.property} – ${g.nip} – wg załączonego wykazu`,{size:18}),
+    new Paragraph({alignment:AlignmentType.LEFT,spacing:{before:40,after:0},children:[
+      new TextRun({text:'Tytuł przelewu: ',bold:true,font:'Arial',size:19}),
+      new TextRun({text:`opłata faktur – ${g.invoices.map(i=>i.no).join(', ')}`,font:'Arial',size:19}),
+    ]}),
     gap(120),
     p('Informujemy, że w przypadku braku zapłaty w wyznaczonym terminie, Fizar Sp. z o.o. zastrzega sobie prawo do:',{before:80,after:40}),
     new Paragraph({indent:{left:360},spacing:{before:40,after:40},children:[new TextRun({text:'–  naliczenia ustawowych odsetek za opóźnienie w transakcjach handlowych,',font:'Arial',size:20})]}),
