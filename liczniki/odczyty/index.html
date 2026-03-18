@@ -181,6 +181,15 @@
   #cameraCanvas { display:none; }
 
   /* Utility colors inline */
+  .btn-qr-scan {
+    width:100%; padding:16px 20px; background:var(--surface2);
+    border:2px solid var(--accent); border-radius:10px;
+    color:var(--text); cursor:pointer; display:flex; align-items:center; gap:16px;
+    font-family:'IBM Plex Sans',sans-serif; transition:background .2s;
+    text-align:left;
+  }
+  .btn-qr-scan:hover { background:rgba(59,130,246,.1); }
+  .btn-qr-scan.success { border-color:var(--green); background:var(--green-bg); }
   .u-C { color:var(--heat); }
   .u-W { color:var(--water); }
   .u-P { color:var(--elec); }
@@ -200,13 +209,43 @@
 
     <div class="setup-card">
       <h2>1. Wczytaj poprzednie odczyty</h2>
-      <p>Wgraj plik Excel z odczytami liczników. Aplikacja odczyta ostatnią kolumnę z danymi jako wartości referencyjne.</p>
-      <div class="upload-zone" onclick="document.getElementById('xlsxInput').click()">
-        <div style="font-size:32px;margin-bottom:8px">📊</div>
-        <div style="font-size:14px;color:var(--muted)">Kliknij lub przeciągnij plik Excel</div>
-        <label class="upload-label">Wybierz plik</label>
+      <p>Zeskanuj kod QR z arkusza <strong>QR_Odczyty</strong> w pliku Excel — lub wgraj plik Excel bezpośrednio.</p>
+
+      <!-- QR Scanner button -->
+      <button class="btn-qr-scan" id="btnScanQR" onclick="startQRScan()">
+        <span style="font-size:24px">📷</span>
+        <div>
+          <div style="font-weight:600;font-size:15px">Skanuj kod QR</div>
+          <div style="font-size:12px;opacity:.7">z arkusza QR_Odczyty w Excel</div>
+        </div>
+      </button>
+
+      <!-- QR scan area -->
+      <div id="qrScanArea" style="display:none;margin-top:12px">
+        <video id="qrVideo" style="width:100%;border-radius:8px;max-height:260px;background:#000"></video>
+        <p style="font-size:12px;color:var(--muted);text-align:center;margin-top:6px">
+          Skieruj kamerę na kod QR z pliku Excel
+        </p>
+        <button onclick="stopQRScan()" style="width:100%;padding:10px;margin-top:8px;
+          background:transparent;border:1px solid var(--border);border-radius:6px;
+          color:var(--muted);cursor:pointer;font-family:inherit">
+          Anuluj skanowanie
+        </button>
+      </div>
+
+      <div style="display:flex;align-items:center;gap:12px;margin:14px 0">
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+        <span style="font-size:11px;color:var(--muted)">lub alternatywnie</span>
+        <div style="flex:1;height:1px;background:var(--border)"></div>
+      </div>
+
+      <!-- File upload fallback -->
+      <div class="upload-zone" onclick="document.getElementById('xlsxInput').click()"
+           style="padding:16px;border-style:solid;border-width:1px">
+        <div style="font-size:13px;color:var(--muted)">📊 Wgraj plik Excel (arkusz QR_Odczyty)</div>
         <input type="file" id="xlsxInput" accept=".xlsx,.xlsm">
       </div>
+
       <div class="upload-success" id="uploadSuccess">
         ✓ Wczytano odczyty z dnia <span class="date-badge" id="refDateBadge">—</span>
         — <span id="refCountBadge">0</span> liczników
@@ -385,35 +424,38 @@ document.getElementById('xlsxInput').addEventListener('change', async e => {
   if (!file) return;
   const ab = await file.arrayBuffer();
   const wb = XLSX.read(ab, {type:'array'});
-  let count = 0;
-  let lastDate = '';
 
+  // Try QR_Odczyty sheet first (preferred — fast)
+  const wsQR = wb.Sheets['QR_Odczyty'];
+  if (wsQR) {
+    // Find the JSON payload cell (A7)
+    const jsonCell = wsQR['A7'];
+    if (jsonCell && jsonCell.v) {
+      try {
+        processQRData(jsonCell.v);
+        return;
+      } catch(e) { /* fall through to manual parsing */ }
+    }
+  }
+
+  // Fallback: read from Cieplo/Woda/Prad sheets directly
+  let count = 0, lastDate = '';
   for (const sheetName of ['Cieplo','Woda','Prad']) {
     const ws = wb.Sheets[sheetName];
     if (!ws) continue;
     const data = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
     if (data.length < 2) continue;
-
-    // Row index 1 = header row (0-indexed)
     const headerRow = data[1];
-
-    // Find last non-empty date column (cols 10+ = index 10+)
-    let lastDateCol = -1;
-    let lastDateVal = '';
+    let lastDateCol = -1, lastDateVal = '';
     for (let c = 10; c < headerRow.length; c++) {
       const v = headerRow[c];
-      if (v && typeof v === 'string' && v.includes('.')) {
-        lastDateCol = c;
-        lastDateVal = v;
-      }
+      if (v && typeof v === 'string' && v.includes('.')) { lastDateCol = c; lastDateVal = v; }
     }
     if (lastDateVal) lastDate = lastDateVal;
-
-    // Read readings from that column
     if (lastDateCol >= 0) {
       for (let r = 2; r < data.length; r++) {
         const row = data[r];
-        const id  = row[4]; // col E
+        const id = row[4];
         const val = row[lastDateCol];
         if (id && typeof id === 'string' && id.startsWith('LICZ') && val !== null) {
           prevReadings[id] = parseFloat(val) || 0;
@@ -422,7 +464,6 @@ document.getElementById('xlsxInput').addEventListener('change', async e => {
       }
     }
   }
-
   refDate = lastDate;
   document.getElementById('refDateBadge').textContent = lastDate;
   document.getElementById('refCountBadge').textContent = count;
@@ -822,6 +863,91 @@ function downloadJSON() {
   URL.revokeObjectURL(a.href);
 }
 window.downloadJSON = downloadJSON;
+
+// ── QR Scanner ───────────────────────────────────────────────────────────────
+let qrScanStream = null;
+let qrScanInterval = null;
+
+async function startQRScan() {
+  const area = document.getElementById('qrScanArea');
+  const video = document.getElementById('qrVideo');
+  area.style.display = 'block';
+  document.getElementById('btnScanQR').style.display = 'none';
+
+  try {
+    qrScanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment' }
+    });
+    video.srcObject = qrScanStream;
+    await video.play();
+
+    // Scan frames for QR code
+    const canvas = document.createElement('canvas');
+    const ctx = canvas.getContext('2d');
+
+    qrScanInterval = setInterval(() => {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height);
+      if (code && code.data) {
+        processQRData(code.data);
+        stopQRScan();
+      }
+    }, 200);
+  } catch(e) {
+    area.style.display = 'none';
+    document.getElementById('btnScanQR').style.display = 'flex';
+    alert('Brak dostępu do kamery. Użyj opcji wgrania pliku Excel.');
+  }
+}
+window.startQRScan = startQRScan;
+
+function stopQRScan() {
+  if (qrScanInterval) { clearInterval(qrScanInterval); qrScanInterval = null; }
+  if (qrScanStream)   { qrScanStream.getTracks().forEach(t => t.stop()); qrScanStream = null; }
+  document.getElementById('qrScanArea').style.display = 'none';
+  document.getElementById('btnScanQR').style.display = 'flex';
+}
+window.stopQRScan = stopQRScan;
+
+function processQRData(raw) {
+  try {
+    const data = JSON.parse(raw);
+    if (!data.d || !data.v || !Array.isArray(data.v)) {
+      throw new Error('Nieprawidłowy format QR');
+    }
+
+    // Map values array to meter IDs using fixed METER_ORDER
+    refDate = data.d;
+    prevReadings = {};
+    METERS.forEach((m, i) => {
+      if (data.v[i] !== undefined && data.v[i] !== null) {
+        prevReadings[m.id] = data.v[i];
+      }
+    });
+
+    const count = Object.keys(prevReadings).length;
+    document.getElementById('refDateBadge').textContent = refDate;
+    document.getElementById('refCountBadge').textContent = count;
+    document.getElementById('uploadSuccess').style.display = 'block';
+
+    const btn = document.getElementById('btnScanQR');
+    btn.classList.add('success');
+    btn.innerHTML = `<span style="font-size:24px">✅</span>
+      <div>
+        <div style="font-weight:600;font-size:15px">QR zeskanowany pomyślnie</div>
+        <div style="font-size:12px;opacity:.7">${count} odczytów z dnia ${refDate}</div>
+      </div>`;
+
+    checkCanStart();
+  } catch(e) {
+    alert('Błąd odczytu QR: ' + e.message);
+  }
+}
+window.processQRData = processQRData;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
