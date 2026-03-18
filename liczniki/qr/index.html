@@ -88,9 +88,17 @@
   /* ── Print ── */
   @media print {
     body, header, main { display:none !important; }
-    #psheet { display:block !important; }
+    #psheet {
+      position: static !important;
+      left: 0 !important;
+      display: block;
+    }
   }
-  #psheet { display:none; }
+  #psheet {
+    position: fixed;
+    left: -9999px;
+    top: 0;
+  }
 
   /* A4 landscape: 5 columns × 4 rows = 20 per page, ~55×60mm each */
   .ppage {
@@ -373,6 +381,10 @@ async function doPrint() {
   const list = filtered();
   if (!list.length) return;
 
+  const btn = document.querySelector('.btn-print');
+  btn.disabled = true;
+  btn.innerHTML = '⏳ Przygotowuję...';
+
   const sheet = document.getElementById('psheet');
   sheet.innerHTML = '';
 
@@ -401,7 +413,11 @@ async function doPrint() {
     sheet.appendChild(pg);
   }
 
+  // Wait for all canvases to finish rendering before printing
+  await new Promise(r => setTimeout(r, 800));
   window.print();
+  btn.disabled = false;
+  btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drukuj naklejki`;
 }
 window.doPrint = doPrint;
 
