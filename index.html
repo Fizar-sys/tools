@@ -1,0 +1,1103 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fizar — Rozliczenie SCH</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2435;
+    --border: #2a3148; --accent: #3b82f6; --accent2: #1d4ed8;
+    --text: #e2e8f0; --muted: #64748b;
+    --green: #22c55e; --green-bg: rgba(34,197,94,.12);
+    --red: #ef4444; --red-bg: rgba(239,68,68,.12);
+    --yellow: #f59e0b; --yellow-bg: rgba(245,158,11,.12);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; min-height: 100vh; }
+  header { background: var(--surface); border-bottom: 1px solid var(--border); padding: 18px 32px; display: flex; align-items: center; gap: 16px; }
+  .logo { font-family: 'IBM Plex Mono', monospace; font-weight: 600; font-size: 18px; color: var(--accent); }
+  .logo span { color: var(--muted); font-weight: 400; }
+  header p { color: var(--muted); font-size: 12px; margin-left: auto; }
+  main { max-width: 1100px; margin: 0 auto; padding: 40px 24px; }
+
+  /* Steps */
+  .steps { display: flex; margin-bottom: 40px; }
+  .step { flex: 1; display: flex; align-items: center; gap: 10px; padding: 14px 20px; background: var(--surface); border: 1px solid var(--border); opacity: .4; transition: opacity .3s; }
+  .step:first-child { border-radius: 8px 0 0 8px; }
+  .step:last-child { border-radius: 0 8px 8px 0; }
+  .step + .step { border-left: none; }
+  .step.active { opacity: 1; border-color: var(--accent); background: rgba(59,130,246,.08); }
+  .step.done { opacity: .7; }
+  .step-num { width: 28px; height: 28px; border-radius: 50%; background: var(--surface2); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; flex-shrink: 0; }
+  .step.active .step-num { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .step.done .step-num { background: var(--green); border-color: var(--green); color: #fff; }
+  .step-label { font-size: 12px; font-weight: 500; line-height: 1.3; }
+
+  /* Panels */
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Upload */
+  .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 64px 32px; text-align: center; cursor: pointer; transition: border-color .2s, background .2s; background: var(--surface); }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(59,130,246,.05); }
+  .upload-zone h2 { font-size: 20px; font-weight: 500; margin-bottom: 8px; }
+  .upload-zone p { color: var(--muted); font-size: 13px; }
+  .upload-zone input { display: none; }
+  .btn-upload { display: inline-block; margin-top: 20px; padding: 10px 24px; background: var(--accent); color: #fff; border-radius: 6px; font-size: 13px; font-weight: 500; cursor: pointer; border: none; transition: background .2s; }
+  .btn-upload:hover { background: var(--accent2); }
+  #processing { display: none; text-align: center; padding: 60px; }
+  .spinner { width: 40px; height: 40px; border: 3px solid var(--border); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; margin: 0 auto 16px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .error-box { background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.3); border-radius: 8px; padding: 16px 20px; color: #fca5a5; font-size: 13px; margin-top: 16px; display: none; }
+
+  /* Review */
+  .review-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; gap: 12px; flex-wrap: wrap; }
+  .review-header h2 { font-size: 18px; font-weight: 500; }
+  .stat-pill { padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; font-family: 'IBM Plex Mono', monospace; }
+  .pill-total { background: rgba(59,130,246,.15); color: var(--accent); }
+  .pill-green { background: var(--green-bg); color: var(--green); }
+  .pill-red { background: var(--red-bg); color: var(--red); }
+
+  .tenant-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; margin-bottom: 6px; overflow: hidden; transition: border-color .2s; }
+  .tenant-card.included { border-left: 3px solid var(--green); }
+  .tenant-card.excluded { border-left: 3px solid var(--muted); opacity: .5; }
+  .card-main { display: flex; align-items: center; gap: 12px; padding: 14px 16px; }
+  .card-info { flex: 1; min-width: 0; }
+  .card-name { font-weight: 500; font-size: 13px; }
+  .card-meta { font-size: 11px; color: var(--muted); font-family: 'IBM Plex Mono', monospace; margin-top: 3px; }
+  .card-result { text-align: right; flex-shrink: 0; }
+  .card-result .amount { font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 600; }
+  .card-result .label { font-size: 11px; margin-top: 2px; }
+  .zwrot  { color: var(--red); }
+  .doplata { color: var(--green); }
+  .toggle-btn { padding: 6px 14px; border-radius: 5px; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--border); background: var(--surface2); color: var(--muted); font-family: 'IBM Plex Mono', monospace; transition: all .15s; flex-shrink: 0; }
+  .toggle-btn.active { background: var(--green-bg); color: var(--green); border-color: var(--green); }
+
+  /* Contact fields */
+  .contact-section { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 20px 24px; margin-bottom: 24px; }
+  .contact-section h3 { font-size: 13px; font-weight: 600; color: var(--muted); margin-bottom: 14px; letter-spacing: .5px; text-transform: uppercase; }
+  .form-row { display: flex; gap: 16px; margin-bottom: 10px; flex-wrap: wrap; }
+  .form-field { flex: 1; min-width: 180px; }
+  .form-field label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+  .form-field input, .form-field textarea { width: 100%; padding: 8px 12px; background: var(--surface2); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-size: 13px; font-family: 'IBM Plex Sans', sans-serif; transition: border-color .2s; }
+  .form-field input:focus, .form-field textarea:focus { outline: none; border-color: var(--accent); }
+  .form-field textarea { resize: vertical; min-height: 60px; }
+
+  /* Action bar */
+  .action-bar { position: sticky; bottom: 0; background: var(--surface); border-top: 1px solid var(--border); padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-top: 32px; border-radius: 0 0 12px 12px; }
+  .action-summary { font-size: 13px; color: var(--muted); }
+  .action-summary strong { color: var(--text); }
+  .btn-generate { padding: 12px 32px; background: var(--accent); color: #fff; border: none; border-radius: 7px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; font-family: 'IBM Plex Sans', sans-serif; }
+  .btn-generate:hover { background: var(--accent2); }
+  .btn-generate:disabled { opacity: .4; cursor: not-allowed; }
+
+  /* Done */
+  #panel-done { text-align: center; padding: 60px 20px; }
+  #panel-done .check { font-size: 56px; margin-bottom: 20px; }
+  #panel-done h2 { font-size: 22px; font-weight: 500; margin-bottom: 10px; }
+  #panel-done p { color: var(--muted); margin-bottom: 28px; }
+  .btn-restart { padding: 10px 24px; background: transparent; color: var(--accent); border: 1px solid var(--accent); border-radius: 6px; font-size: 13px; cursor: pointer; font-family: 'IBM Plex Sans', sans-serif; transition: background .2s; }
+  .btn-restart:hover { background: rgba(59,130,246,.1); }
+  .file-list { list-style: none; padding: 0; margin: 0 auto 24px; max-width: 520px; text-align: left; }
+  .file-list li { font-family: monospace; font-size: 12px; color: var(--muted); padding: 3px 0; }
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">FIZAR<span>.sch</span></div>
+  <div style="width:1px;height:24px;background:var(--border)"></div>
+  <span style="font-size:13px;color:var(--muted)">Generator Rozliczenia SC — Listy + Załączniki</span>
+  <p>Będzin, ul. Tadeusza Kościuszki 74/10A</p>
+</header>
+
+<main>
+  <div class="steps">
+    <div class="step active" id="step1"><div class="step-num">1</div><div class="step-label">Wczytaj plik<br><span style="color:var(--muted);font-weight:300">Excel SCH</span></div></div>
+    <div class="step" id="step2"><div class="step-num">2</div><div class="step-label">Dane kontaktowe<br><span style="color:var(--muted);font-weight:300">Zarządca / data</span></div></div>
+    <div class="step" id="step3"><div class="step-num">3</div><div class="step-label">Wybierz najemców<br><span style="color:var(--muted);font-weight:300">SC z Najemcy</span></div></div>
+    <div class="step" id="step4"><div class="step-num">4</div><div class="step-label">Generuj pisma<br><span style="color:var(--muted);font-weight:300">Pobierz ZIP</span></div></div>
+  </div>
+
+  <!-- Panel 1: Upload -->
+  <div class="panel active" id="panel-upload">
+    <div class="upload-zone" id="dropzone">
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.5" style="margin-bottom:16px">
+        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
+        <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+      </svg>
+      <h2>Wczytaj plik rozliczenia SCH</h2>
+      <p>Plik .xlsm, .xlsx lub .xlsb (Grudziądz / Malbork / Zielona Góra)</p>
+      <input type="file" id="fileInput" accept=".xlsm,.xlsx,.xlsb">
+      <label for="fileInput" class="btn-upload">Wybierz plik Excel</label>
+    </div>
+    <div class="error-box" id="uploadError"></div>
+    <div id="processing"><div class="spinner"></div><p style="color:var(--muted)">Analizowanie pliku…</p></div>
+  </div>
+
+  <!-- Panel 2: Contact details -->
+  <div class="panel" id="panel-contact">
+    <div class="contact-section">
+      <h3>Dane zarządcy i dokumentu</h3>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Imię i nazwisko zarządcy</label>
+          <input type="text" id="managerName" value="Barbara Filek" placeholder="np. Barbara Filek">
+        </div>
+        <div class="form-field">
+          <label>Telefon</label>
+          <input type="text" id="managerPhone" value="668 604 105">
+        </div>
+        <div class="form-field">
+          <label>E-mail</label>
+          <input type="text" id="managerEmail" value="barbara.filek@fizar.pl">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field">
+          <label>Data pisma</label>
+          <input type="text" id="letterDate" placeholder="np. 06 marca 2026r.">
+        </div>
+        <div class="form-field">
+          <label>Miejscowość</label>
+          <input type="text" id="letterCity" value="Będzin">
+        </div>
+        <div class="form-field">
+          <label>Paragraf umowy (opcjonalnie)</label>
+          <input type="text" id="contractPar" value="§19.1">
+        </div>
+      </div>
+      <div class="form-row">
+        <div class="form-field" style="flex:2">
+          <label>Nazwa centrum handlowego</label>
+          <input type="text" id="centerName" value="" placeholder="np. CH ZAWISZA al. Rodła 6, Malbork">
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;gap:12px;justify-content:flex-end">
+      <button onclick="backToUpload()" style="padding:10px 20px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;cursor:pointer;font-family:'IBM Plex Sans',sans-serif">← Wróć</button>
+      <button onclick="goToReview()" style="padding:10px 28px;background:var(--accent);color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px;font-weight:600;font-family:'IBM Plex Sans',sans-serif">Dalej → Wybierz najemców</button>
+    </div>
+  </div>
+
+  <!-- Panel 3: Tenant review -->
+  <div class="panel" id="panel-review">
+    <div class="review-header">
+      <h2 id="reviewHeading">Najemcy SC</h2>
+      <div style="display:flex;gap:8px;flex-wrap:wrap">
+        <span class="stat-pill pill-total" id="stat-total">—</span>
+        <span class="stat-pill pill-red"   id="stat-zwrot">—</span>
+        <span class="stat-pill pill-green" id="stat-doplata">—</span>
+      </div>
+    </div>
+    <div id="tenantList"></div>
+    <div class="action-bar">
+      <div class="action-summary" id="actionSummary"></div>
+      <button class="btn-generate" id="btnGenerate">⬇ Generuj pisma i załączniki</button>
+    </div>
+  </div>
+
+  <!-- Panel 4: Done -->
+  <div class="panel" id="panel-done">
+    <div class="check">✅</div>
+    <h2 id="doneMsg">Dokumenty wygenerowane</h2>
+    <p id="doneDetail">Plik ZIP został pobrany.</p>
+    <ul class="file-list" id="doneList"></ul>
+    <button class="btn-restart" onclick="restart()">← Nowy plik</button>
+  </div>
+</main>
+
+<!-- SheetJS for Excel parsing -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<!-- docx for Word generation -->
+<script src="https://cdn.jsdelivr.net/npm/docx@9.5.3/dist/index.iife.js"></script>
+<!-- JSZip for bundling -->
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+
+<script>
+// ── State ──────────────────────────────────────────────────────────────────
+let schData = null;   // parsed Excel data
+let tenants = [];     // [{name, unit, area, share, payments[], costs[], balance[], annualResult, resultLabel, included}]
+
+const MONTHS_PL = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+const MONTHS_SHORT = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function setStep(n) {
+  [1,2,3,4].forEach(i => {
+    const s = document.getElementById('step'+i);
+    s.classList.remove('active','done');
+    if (i < n) s.classList.add('done');
+    if (i === n) s.classList.add('active');
+  });
+}
+function showPanel(id) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+function fmt(n) {
+  if (n === null || n === undefined) return '—';
+  return Math.abs(n).toLocaleString('pl-PL', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' PLN';
+}
+function fmtSigned(n) {
+  if (!n) return '0,00 PLN';
+  return n.toLocaleString('pl-PL', {minimumFractionDigits:2, maximumFractionDigits:2}) + ' PLN';
+}
+function showError(msg) {
+  const el = document.getElementById('uploadError');
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+function backToUpload() {
+  showPanel('panel-upload');
+  document.getElementById('dropzone').style.display = 'block';
+  document.getElementById('processing').style.display = 'none';
+  document.getElementById('uploadError').style.display = 'none';
+  setStep(1);
+}
+function restart() {
+  schData = null; tenants = [];
+  document.getElementById('fileInput').value = '';
+  backToUpload();
+}
+
+// ── Upload ──────────────────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
+dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) processFile(fileInput.files[0]); });
+
+async function processFile(file) {
+  if (!file.name.match(/\.(xlsx|xlsm|xlsb)$/i)) { showError('Proszę wybrać plik .xlsx lub .xlsm'); return; }
+  dropzone.style.display = 'none';
+  document.getElementById('processing').style.display = 'block';
+  document.getElementById('uploadError').style.display = 'none';
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab, { type: 'array', cellDates: true });
+    schData = parseWorkbook(wb);
+    // Pre-fill center name from data
+    document.getElementById('centerName').value = schData.property + ', ' + (schData.year || '');
+    // Set default date
+    const today = new Date();
+    document.getElementById('letterDate').value = today.toLocaleDateString('pl-PL', {day:'numeric', month:'long', year:'numeric'}) + 'r.';
+    showPanel('panel-contact');
+    setStep(2);
+  } catch(e) {
+    dropzone.style.display = 'block';
+    document.getElementById('processing').style.display = 'none';
+    showError('Błąd parsowania pliku: ' + e.message);
+    console.error(e);
+  }
+}
+
+// ── Parse workbook ──────────────────────────────────────────────────────────
+function cellVal(ws, addr) {
+  const c = ws[addr];
+  if (!c) return null;
+  return c.v !== undefined ? c.v : null;
+}
+function rowVals(ws, row, colStart, colEnd) {
+  const vals = [];
+  for (let c = colStart; c <= colEnd; c++) {
+    const addr = XLSX.utils.encode_cell({r: row-1, c: c-1});
+    const cell = ws[addr];
+    vals.push(cell ? (cell.v !== undefined ? cell.v : null) : null);
+  }
+  return vals;
+}
+
+function parseWorkbook(wb) {
+  const wsR = wb.Sheets['rozliczenie załączniki'];
+  const wsN = wb.Sheets['Najemcy'];
+  const wsZ = wb.Sheets['ZaliczkiWpłaty'];
+  const wsP = wb.Sheets['Podsumowanie 2025'];
+
+  if (!wsR || !wsN || !wsZ || !wsP) throw new Error('Brak wymaganych arkuszy. Sprawdź czy plik zawiera: "rozliczenie załączniki", "Najemcy", "ZaliczkiWpłaty", "Podsumowanie 2025"');
+
+  // ── Header info from rozliczenie załączniki ──
+  const property   = cellVal(wsR, 'A1') || '';
+  const totalArea  = cellVal(wsR, 'H1') || 4569.81;
+  const year       = cellVal(wsR, 'B6') || 2025;
+  const preparedBy = cellVal(wsR, 'N58') || '';
+  const preparedOn = cellVal(wsR, 'N60') || '';
+
+  // ── SC category names and centre costs (rows 12-25, cols B-N) ──
+  const scCategories = [];
+  for (let r = 12; r <= 25; r++) {
+    const name = cellVal(wsR, XLSX.utils.encode_cell({r:r-1,c:0}));
+    if (!name || name === 0) { scCategories.push({name: `SC ${r-11}`, monthly: new Array(12).fill(0), total: 0}); continue; }
+    const monthly = [];
+    for (let m = 0; m < 12; m++) {
+      const addr = XLSX.utils.encode_cell({r:r-1, c:m+1});
+      const v = wsR[addr] ? (wsR[addr].v || 0) : 0;
+      monthly.push(typeof v === 'number' ? v : 0);
+    }
+    const total = wsR[XLSX.utils.encode_cell({r:r-1,c:13})] ? (wsR[XLSX.utils.encode_cell({r:r-1,c:13})].v || 0) : 0;
+    scCategories.push({ name: String(name), monthly, total: typeof total === 'number' ? total : 0 });
+  }
+
+  // Centre total per month (row 26)
+  const centreTotalMonthly = [];
+  for (let m = 0; m < 12; m++) {
+    const addr = XLSX.utils.encode_cell({r:25, c:m+1});
+    centreTotalMonthly.push(wsR[addr] ? (wsR[addr].v || 0) : 0);
+  }
+  const centreTotalAnnual = wsR[XLSX.utils.encode_cell({r:25,c:13})] ? (wsR[XLSX.utils.encode_cell({r:25,c:13})].v || 0) : 0;
+
+  // ── SC tenant list from Najemcy (col C=name, col D=unit, col E=area, col H=SC flag) ──
+  const scTenants = [];
+  const range = XLSX.utils.decode_range(wsN['!ref'] || 'A1:Z100');
+  for (let r = range.s.r; r <= range.e.r; r++) {
+    const nameCell = wsN[XLSX.utils.encode_cell({r, c:2})]; // col C
+    const unitCell = wsN[XLSX.utils.encode_cell({r, c:3})]; // col D
+    const areaCell = wsN[XLSX.utils.encode_cell({r, c:4})]; // col E
+    const scCell   = wsN[XLSX.utils.encode_cell({r, c:7})]; // col H
+    if (!nameCell || !nameCell.v) continue;
+    const name = String(nameCell.v).trim();
+    const sc   = scCell ? String(scCell.v || '').trim() : '';
+    if (sc !== 'SC') continue;
+    if (!name || name === '0' || name === 'Najemcy') continue;
+    const unit = unitCell ? String(unitCell.v || '') : '';
+    const area = areaCell ? (typeof areaCell.v === 'number' ? areaCell.v : parseFloat(areaCell.v) || 0) : 0;
+    scTenants.push({ name, unit, area });
+  }
+
+  if (!scTenants.length) throw new Error('Nie znaleziono najemców SC w arkuszu Najemcy (kolumna H = "SC")');
+
+  // ── Monthly SC payments from ZaliczkiWpłaty ──
+  // SC payment column per month: col index (0-based) = 10 + (month-1)*5
+  const zRange = XLSX.utils.decode_range(wsZ['!ref'] || 'A1:Z100');
+  const paymentMap = {}; // name -> monthly[12]
+
+  for (let r = zRange.s.r; r <= zRange.e.r; r++) {
+    // Tenant name is in col B (index 1) or col C (index 2) - check both
+    let nameVal = null;
+    for (let nc = 1; nc <= 3; nc++) {
+      const c = wsZ[XLSX.utils.encode_cell({r, c:nc})];
+      if (c && c.v && typeof c.v === 'string' && c.v.trim().length > 3) { nameVal = c.v.trim(); break; }
+    }
+    if (!nameVal) continue;
+    // Match to SC tenant
+    const matched = scTenants.find(t => nameVal.includes(t.name) || t.name.includes(nameVal) ||
+      nameVal.split(' ').filter(w=>w.length>3).some(w => t.name.includes(w)));
+    if (!matched) continue;
+    const monthly = [];
+    for (let m = 0; m < 12; m++) {
+      const colIdx = 10 + m * 5; // 0-based
+      const cell = wsZ[XLSX.utils.encode_cell({r, c:colIdx})];
+      monthly.push(cell ? (typeof cell.v === 'number' ? cell.v : 0) : 0);
+    }
+    if (monthly.some(v => v !== 0)) paymentMap[matched.name] = monthly;
+  }
+
+  // ── Annual results from Podsumowanie 2025 ──
+  const pRange = XLSX.utils.decode_range(wsP['!ref'] || 'A1:Z100');
+  const summaryMap = {}; // name -> {annual, label}
+  for (let r = pRange.s.r; r <= pRange.e.r; r++) {
+    const nc = wsP[XLSX.utils.encode_cell({r, c:0})];
+    if (!nc || !nc.v || typeof nc.v !== 'string') continue;
+    const name = nc.v.trim();
+    const annual = wsP[XLSX.utils.encode_cell({r, c:16})] ? (wsP[XLSX.utils.encode_cell({r, c:16})].v || 0) : 0;
+    const label  = wsP[XLSX.utils.encode_cell({r, c:17})] ? String(wsP[XLSX.utils.encode_cell({r, c:17})].v || '') : '';
+    if (typeof annual === 'number' && annual !== 0) summaryMap[name] = { annual, label };
+  }
+
+  // ── Build tenant objects ──
+  const result = [];
+  for (const t of scTenants) {
+    const share = totalArea > 0 ? t.area / totalArea : 0;
+    // Part 2: monthly payments
+    const payments = paymentMap[t.name] || new Array(12).fill(0);
+    // Part 3: allocated costs per month per category
+    const allocatedCats = scCategories.map(cat => ({
+      name: cat.name,
+      monthly: cat.monthly.map(v => v * share),
+      total: cat.total * share,
+    }));
+    const allocatedMonthly = new Array(12).fill(0).map((_,m) =>
+      allocatedCats.reduce((s,c) => s + c.monthly[m], 0));
+    const allocatedTotal = allocatedCats.reduce((s,c) => s + c.total, 0);
+    // Part 4: balance per month = payments - allocated
+    const balanceMonthly = payments.map((p,i) => p - allocatedMonthly[i]);
+    const balanceTotal = payments.reduce((s,v)=>s+v,0) - allocatedTotal;
+
+    // Summary
+    const sumEntry = summaryMap[t.name] || { annual: balanceTotal, label: balanceTotal >= 0 ? 'ZWROT' : 'DOPŁATA' };
+
+    result.push({
+      name: t.name, unit: t.unit, area: t.area, share,
+      payments, allocatedCats, allocatedMonthly, allocatedTotal,
+      balanceMonthly, balanceTotal,
+      annualResult: sumEntry.annual, resultLabel: sumEntry.label,
+      included: true,
+    });
+  }
+
+  return { property, totalArea, year, preparedBy, preparedOn, scCategories, centreTotalMonthly, centreTotalAnnual };
+}
+
+// ── Step 2 → 3 ─────────────────────────────────────────────────────────────
+function goToReview() {
+  // Build tenant list using schData + contact fields
+  buildTenantList();
+  showPanel('panel-review');
+  setStep(3);
+}
+window.goToReview = goToReview;
+window.backToUpload = backToUpload;
+
+function buildTenantList() {
+  // Re-parse tenants (already in schData) — just rebuild display
+  // tenants array was built during parseWorkbook, stored in schData.tenants
+  // Actually we stored it separately - let's rebuild from schData
+  // We need to re-run the tenant building — let's store tenants at parse time
+  // The tenants are already computed during processFile — we need to store them
+  // Fix: store tenants in global during parse
+}
+
+// ── Patch: store tenants globally during parse ──────────────────────────────
+const _origProcess = processFile;
+// Override to store tenants
+async function processFile(file) {
+  if (!file.name.match(/\.(xlsx|xlsm|xlsb)$/i)) { showError('Proszę wybrać plik .xlsx lub .xlsm'); return; }
+  dropzone.style.display = 'none';
+  document.getElementById('processing').style.display = 'block';
+  document.getElementById('uploadError').style.display = 'none';
+  await new Promise(r => setTimeout(r, 50));
+  try {
+    const ab = await file.arrayBuffer();
+    const wb = XLSX.read(ab, { type: 'array', cellDates: true });
+    const parsed = parseWorkbook(wb);
+    schData = parsed.meta;
+    tenants = parsed.tenants;
+    document.getElementById('centerName').value = parsed.meta.property;
+    const today = new Date();
+    document.getElementById('letterDate').value = today.toLocaleDateString('pl-PL', {day:'numeric', month:'long', year:'numeric'}) + 'r.';
+    // Pre-fill manager data from Nieruchomość sheet if available
+    if (parsed.meta.managerData) {
+      const md = parsed.meta.managerData;
+      if (md.manager) document.getElementById('managerName').value  = md.manager;
+      if (md.phone)   document.getElementById('managerPhone').value = md.phone;
+      if (md.email)   document.getElementById('managerEmail').value = md.email;
+      if (md.city)    document.getElementById('letterCity').value   = md.city;
+      if (md.par)     document.getElementById('contractPar').value  = md.par;
+    }
+    showPanel('panel-contact');
+    setStep(2);
+  } catch(e) {
+    dropzone.style.display = 'block';
+    document.getElementById('processing').style.display = 'none';
+    showError('Błąd parsowania pliku: ' + e.message);
+    console.error(e);
+  }
+}
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) processFile(fileInput.files[0]); }, true);
+dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); if (e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); }, true);
+
+// ── Rewrite parseWorkbook to return {meta, tenants} ──────────────────────────
+function parseWorkbook(wb) {
+  // Support both file formats: Grudziądz (.xlsm) and Malbork (.xlsb converted)
+  const wsR = wb.Sheets['rozliczenie załączniki'] || wb.Sheets['Najemca rozliczenie MSC'];
+  const wsN = wb.Sheets['Najemcy'];
+  const wsZ = wb.Sheets['ZaliczkiWpłaty'];
+  const wsP = wb.Sheets['Podsumowanie 2025'] || wb.Sheets['Podsumowanie rozliczenie MSC'];
+  const wsNR= wb.Sheets['Nieruchomość']; // manager data sheet (optional)
+  if (!wsR||!wsN||!wsZ||!wsP) throw new Error('Brak wymaganych arkuszy. Plik powinien zawierać arkusze: Najemcy, ZaliczkiWpłaty oraz arkusz rozliczenia i podsumowania.');
+
+  // ── Manager data from Nieruchomość sheet (if present) ──
+  const managerData = wsNR ? {
+    manager: wsNR[XLSX.utils.encode_cell({r:0,c:0})]?.v || '',
+    phone:   String(wsNR[XLSX.utils.encode_cell({r:1,c:0})]?.v || ''),
+    email:   wsNR[XLSX.utils.encode_cell({r:2,c:0})]?.v || '',
+    city:    wsNR[XLSX.utils.encode_cell({r:3,c:0})]?.v || '',
+    par:     wsNR[XLSX.utils.encode_cell({r:4,c:0})]?.v || '§19.1',
+  } : null;
+
+  const cv = (ws,addr) => { const c=ws[addr]; return c?c.v:null; };
+
+  const property  = cv(wsR,'A1') || '';
+  const totalArea = (cv(wsR,'H1') || 4569.81);
+  const year      = cv(wsR,'B6') || 2025;
+  const author    = cv(wsR, XLSX.utils.encode_cell({r:57,c:13})) || '';
+  const authDate  = cv(wsR, XLSX.utils.encode_cell({r:59,c:13})) || '';
+
+  // Centre SC categories (rows 12-25)
+  const scCategories = [];
+  for (let r=12;r<=25;r++) {
+    const name = cv(wsR, XLSX.utils.encode_cell({r:r-1,c:0}));
+    const monthly = [];
+    for (let m=0;m<12;m++) {
+      const cell = wsR[XLSX.utils.encode_cell({r:r-1,c:m+1})];
+      monthly.push(cell&&typeof cell.v==='number'?cell.v:0);
+    }
+    const totalCell = wsR[XLSX.utils.encode_cell({r:r-1,c:13})];
+    const total = totalCell&&typeof totalCell.v==='number'?totalCell.v:monthly.reduce((s,v)=>s+v,0);
+    scCategories.push({name: name?String(name):`SC ${r-11}`, monthly, total});
+  }
+
+  // Centre monthly totals (row 26)
+  const centreTotalMonthly = [];
+  for (let m=0;m<12;m++) {
+    const cell = wsR[XLSX.utils.encode_cell({r:25,c:m+1})];
+    centreTotalMonthly.push(cell&&typeof cell.v==='number'?cell.v:0);
+  }
+  const centreTotalAnnual = scCategories.reduce((s,c)=>s+c.total,0);
+
+  // SC tenants from Najemcy
+  const scTenantList = [];
+  const nRange = XLSX.utils.decode_range(wsN['!ref']||'A1:Z100');
+  for (let r=nRange.s.r;r<=nRange.e.r;r++) {
+    const nc = wsN[XLSX.utils.encode_cell({r,c:2})];
+    const uc = wsN[XLSX.utils.encode_cell({r,c:3})];
+    const ac = wsN[XLSX.utils.encode_cell({r,c:4})];
+    const sc = wsN[XLSX.utils.encode_cell({r,c:7})];
+    if (!nc||!nc.v) continue;
+    const name = String(nc.v).trim();
+    if (!name||name==='0'||name.length<3) continue;
+    // Skip known header/section rows
+    if (['Najemcy','Kategoria','CZĘŚCI WSPÓLNE','POZOSTALI NAJEMCY',
+         'Właściciel Fizar','Nr lokalu'].includes(name)) continue;
+    if (!sc||String(sc.v||'').trim()!=='SC') continue;
+    // Skip if area is not a valid number (catches header rows with string area)
+    let area = 0;
+    if (ac) {
+      if (typeof ac.v === 'number') area = ac.v;
+      else if (typeof ac.v === 'string') {
+        // Handle Polish decimal comma: '1121,43' → 1121.43
+        const parsed = parseFloat(String(ac.v).replace(',','.'));
+        if (!isNaN(parsed) && parsed > 0) area = parsed;
+        else continue; // skip non-numeric area rows (headers)
+      } else continue;
+    }
+    if (area <= 0) continue; // skip zero-area rows
+    const unit = uc?String(uc.v||''):'';
+    scTenantList.push({name,unit,area});
+  }
+  if (!scTenantList.length) throw new Error('Nie znaleziono najemców SC (kolumna H="SC" w arkuszu Najemcy)');
+
+  // Payments from ZaliczkiWpłaty
+  // Dynamically detect SC payment columns from row 8 (subheader row)
+  // where cell value = 'sc' — works for any file format
+  const SC_MONTH_COLS = []; // 0-based column indices
+  if (wsZ['!ref']) {
+    const zRange2 = XLSX.utils.decode_range(wsZ['!ref']);
+    for (let c = zRange2.s.c; c <= zRange2.e.c; c++) {
+      const cell = wsZ[XLSX.utils.encode_cell({r:7, c})]; // row 8 = index 7
+      if (cell && String(cell.v||'').toLowerCase() === 'sc') {
+        SC_MONTH_COLS.push(c);
+        if (SC_MONTH_COLS.length === 12) break; // only first 12 SC columns = months
+      }
+    }
+  }
+  // Fallback to Grudziądz defaults if detection fails
+  if (SC_MONTH_COLS.length < 12) {
+    SC_MONTH_COLS.length = 0;
+    [10,15,20,25,30,35,40,45,50,55,60,65].forEach(c => SC_MONTH_COLS.push(c));
+  }
+
+  const paymentMap = {};
+  const zRange = XLSX.utils.decode_range(wsZ['!ref']||'A1:BZ100');
+  for (let r=zRange.s.r;r<=zRange.e.r;r++) {
+    // Tenant name is strictly in col C (0-based index 2)
+    const nameCell = wsZ[XLSX.utils.encode_cell({r, c:2})];
+    if (!nameCell||!nameCell.v||typeof nameCell.v!=='string') continue;
+    const nameVal = nameCell.v.trim();
+    if (!nameVal||nameVal.length<3) continue;
+
+    // Match to SC tenant by exact name or strong substring
+    const matched = scTenantList.find(t =>
+      t.name === nameVal ||
+      t.name.toLowerCase() === nameVal.toLowerCase() ||
+      nameVal.toLowerCase().includes(t.name.toLowerCase().substring(0,15)) ||
+      t.name.toLowerCase().includes(nameVal.toLowerCase().substring(0,15))
+    );
+    if (!matched) continue;
+
+    // Read SC payment for each month using exact column positions
+    const monthly = SC_MONTH_COLS.map(ci => {
+      const cell = wsZ[XLSX.utils.encode_cell({r, c:ci})];
+      return (cell && typeof cell.v === 'number') ? cell.v : 0;
+    });
+
+    if (monthly.some(v=>v!==0)) paymentMap[matched.name] = monthly;
+  }
+
+  // Summary + monthly balance from Podsumowanie 2025
+  // Columns: A=name, B=unit, C=area, D=SC, E-P=monthly(1-12), Q=annual, R=label
+  // Sign: negative = ZWROT (Fizar owes tenant), positive = DOPŁATA (tenant owes Fizar)
+  const summaryMap={};
+  const pRange=XLSX.utils.decode_range(wsP['!ref']||'A1:Z100');
+  for (let r=pRange.s.r;r<=pRange.e.r;r++) {
+    const nc=wsP[XLSX.utils.encode_cell({r,c:0})];
+    if (!nc||typeof nc.v!=='string') continue;
+    const name=nc.v.trim();
+    const monthly=[];
+    for (let m=0;m<12;m++) {
+      const cell=wsP[XLSX.utils.encode_cell({r,c:4+m})];
+      monthly.push(cell&&typeof cell.v==='number'?cell.v:0);
+    }
+    const annCell=wsP[XLSX.utils.encode_cell({r,c:16})];
+    const lblCell=wsP[XLSX.utils.encode_cell({r,c:17})];
+    const annual=annCell&&typeof annCell.v==='number'?annCell.v:0;
+    const label=lblCell?String(lblCell.v||''):'';
+    if (annual!==0||monthly.some(v=>v!==0))
+      summaryMap[name]={annual,label,monthly};
+  }
+
+  // Build tenants — use Podsumowanie as source of truth for balance
+  const tenantObjects = scTenantList.map(t => {
+    const share = totalArea>0?t.area/totalArea:0;
+    const payments = paymentMap[t.name]||new Array(12).fill(0);
+    const allocatedCats = scCategories.map(cat=>({
+      name:cat.name,
+      monthly:cat.monthly.map(v=>v*share),
+      total:cat.total*share,
+    }));
+    const allocatedMonthly = new Array(12).fill(0).map((_,m)=>allocatedCats.reduce((s,c)=>s+c.monthly[m],0));
+    const allocatedTotal = allocatedCats.reduce((s,c)=>s+c.total,0);
+
+    // Use Podsumowanie for balance — source of truth (handles partial years, caps, etc.)
+    const sum = summaryMap[t.name];
+    // Podsumowanie sign: negative = ZWROT, positive = DOPŁATA
+    const balanceMonthly = sum ? sum.monthly : payments.map((p,i)=>p-allocatedMonthly[i]);
+    const balanceTotal   = sum ? sum.annual  : (payments.reduce((s,v)=>s+v,0)-allocatedTotal);
+    const resultLabel    = sum ? sum.label   : (balanceTotal<=0?'ZWROT':'DOPŁATA');
+
+    // isZwrot: negative balance means Fizar owes tenant = ZWROT
+    const isZwrot = balanceTotal <= 0;
+
+    return { name:t.name, unit:t.unit, area:t.area, share,
+             payments, allocatedCats, allocatedMonthly, allocatedTotal,
+             balanceMonthly, balanceTotal,
+             annualResult:balanceTotal, resultLabel, isZwrot, included:true };
+  });
+
+  return {
+    meta:{property,totalArea,year,author,authDate,scCategories,centreTotalMonthly,centreTotalAnnual,managerData},
+    tenants:tenantObjects
+  };
+}
+
+// ── Render review ───────────────────────────────────────────────────────────
+function goToReview() {
+  renderReview();
+  showPanel('panel-review');
+  setStep(3);
+}
+window.goToReview = goToReview;
+
+function renderReview() {
+  const container = document.getElementById('tenantList');
+  container.innerHTML = '';
+  tenants.forEach((t,i) => {
+    const isZwrot = t.isZwrot;
+    const card = document.createElement('div');
+    card.className = `tenant-card ${t.included?'included':'excluded'}`;
+    card.id = `card-${i}`;
+    card.innerHTML = `
+      <div class="card-main">
+        <div class="card-info">
+          <div class="card-name">${t.name}</div>
+          <div class="card-meta">Lokal: ${t.unit} &nbsp;·&nbsp; ${t.area.toFixed(2)} m² &nbsp;·&nbsp; Udział: ${(t.share*100).toFixed(4)}% &nbsp;·&nbsp; Wpłacono: ${fmt(t.payments.reduce((s,v)=>s+v,0))} &nbsp;·&nbsp; Naliczono: ${fmt(t.allocatedTotal)}</div>
+        </div>
+        <div class="card-result">
+          <div class="amount ${isZwrot?'zwrot':'doplata'}">${fmt(Math.abs(t.balanceTotal))}</div>
+          <div class="label ${isZwrot?'zwrot':'doplata'}">${t.resultLabel && t.resultLabel.length>1 ? t.resultLabel.toUpperCase() : (isZwrot?'ZWROT':'DOPŁATA')}</div>
+        </div>
+        <button class="toggle-btn ${t.included?'active':''}" onclick="toggleTenant(${i})">${t.included?'✓ Uwzględnij':'Wyklucz'}</button>
+      </div>`;
+    container.appendChild(card);
+  });
+  updateStats();
+}
+
+window.toggleTenant = function(i) {
+  tenants[i].included = !tenants[i].included;
+  const card = document.getElementById(`card-${i}`);
+  card.className = `tenant-card ${tenants[i].included?'included':'excluded'}`;
+  const btn = card.querySelector('.toggle-btn');
+  btn.textContent = tenants[i].included ? '✓ Uwzględnij' : 'Wyklucz';
+  btn.className = `toggle-btn ${tenants[i].included?'active':''}`;
+  updateStats();
+};
+
+function updateStats() {
+  const inc = tenants.filter(t=>t.included);
+  const zwrot   = inc.filter(t=>t.isZwrot).length;
+  const doplata = inc.filter(t=>!t.isZwrot).length;
+  document.getElementById('stat-total').textContent = `${inc.length} najemców`;
+  document.getElementById('stat-zwrot').textContent = `${zwrot} ZWROT`;
+  document.getElementById('stat-doplata').textContent = `${doplata} DOPŁATA`;
+  document.getElementById('actionSummary').innerHTML =
+    `Zostanie wygenerowanych <strong>${inc.length}</strong> kompletów (list + załącznik)`;
+  document.getElementById('btnGenerate').disabled = inc.length === 0;
+}
+
+document.getElementById('btnGenerate').addEventListener('click', generateAll);
+
+// ── Generate all documents ──────────────────────────────────────────────────
+async function generateAll() {
+  const btn = document.getElementById('btnGenerate');
+  btn.disabled = true;
+  const inc = tenants.filter(t=>t.included);
+  const zip = new JSZip();
+  const fileList = [];
+
+  const contact = {
+    manager: document.getElementById('managerName').value,
+    phone:   document.getElementById('managerPhone').value,
+    email:   document.getElementById('managerEmail').value,
+    date:    document.getElementById('letterDate').value,
+    city:    document.getElementById('letterCity').value,
+    par:     document.getElementById('contractPar').value,
+    center:  document.getElementById('centerName').value,
+  };
+
+  for (let i=0;i<inc.length;i++) {
+    const t = inc[i];
+    btn.textContent = `⏳ Generowanie ${i+1} / ${inc.length}…`;
+    await new Promise(r=>setTimeout(r,0));
+    const blob = await buildDocument(t, contact);
+    const ab = await blob.arrayBuffer();
+    const safeName = t.name.replace(/[^a-zA-Z0-9ąćęłńóśźżĄĆĘŁŃÓŚŹŻ\s]/g,'').trim().replace(/\s+/g,'_');
+    const fname = `SCH_${schData.year}_${t.unit}_${safeName}.docx`;
+    zip.file(fname, ab);
+    fileList.push(fname);
+  }
+
+  btn.textContent = '⏳ Pakowanie ZIP…';
+  await new Promise(r=>setTimeout(r,0));
+  const zipBlob = await zip.generateAsync({type:'blob',compression:'DEFLATE'});
+  const zipName = `Rozliczenie_SCH_${schData.year}_${schData.property.replace(/\s/g,'_')}.zip`;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(zipBlob);
+  a.download = zipName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(a.href);
+
+  btn.textContent = '⬇ Generuj pisma i załączniki';
+  btn.disabled = false;
+
+  document.getElementById('doneMsg').textContent = `Wygenerowano ${inc.length} kompletów dokumentów`;
+  document.getElementById('doneDetail').innerHTML = `Plik <strong>${zipName}</strong> pobrany do folderu Pobrane.`;
+  const ul = document.getElementById('doneList');
+  ul.innerHTML = fileList.map(f=>`<li>📄 ${f}</li>`).join('');
+  showPanel('panel-done');
+  setStep(4);
+}
+
+// ── Build one Word document (cover letter + appendix) ───────────────────────
+async function buildDocument(t, contact) {
+  const { Document, Packer, Paragraph, TextRun, Table, TableRow, TableCell,
+          AlignmentType, BorderStyle, WidthType, ShadingType, PageBreak, VerticalAlign,
+          PageOrientation } = docx;
+
+  // Portrait (cover letter): A4 portrait
+  const PORT_W = 11906, PORT_H = 16838, MARGIN = 1418;
+  const PORT_CW = PORT_W - 2 * MARGIN;   // ~9070 DXA
+
+  // Landscape (appendix): A4 landscape — docx-js: pass portrait dims + orientation
+  const LAND_W = 11906, LAND_H = 16838, LAND_MARGIN = 1134; // ~2cm margins
+  const LAND_CW = LAND_H - 2 * LAND_MARGIN;  // long edge minus margins = ~14570 DXA
+  const year = schData.year;
+  const isZwrot = t.isZwrot;
+  const absBalance = Math.abs(t.balanceTotal);
+  const paid = t.payments.reduce((s,v)=>s+v,0);
+
+  // ── Helpers ──
+  const bT = () => { const s={style:BorderStyle.SINGLE,size:4,color:'CCCCCC'}; return {top:s,bottom:s,left:s,right:s}; };
+  const bM = () => { const s={style:BorderStyle.SINGLE,size:6,color:'2E75B6'}; return {top:s,bottom:s,left:s,right:s}; };
+  const bN = () => { const s={style:BorderStyle.NONE,size:0,color:'FFFFFF'}; return {top:s,bottom:s,left:s,right:s}; };
+
+  const p = (text,opts={}) => {
+    const {bold=false,size=20,before=60,after=60,align=AlignmentType.LEFT,color,italic,underline} = opts;
+    return new Paragraph({alignment:align, spacing:{before,after},
+      children:[new TextRun({text,bold,font:'Arial',size,...(color?{color}:{}),...(italic?{italics:true}:{}),...(underline?{underline:{}}:{})})]});
+  };
+  const gap = (n=100) => new Paragraph({spacing:{before:n,after:0},children:[]});
+
+  const cell = (text,w,opts={}) => {
+    const {bg='FFFFFF',bold=false,align=AlignmentType.LEFT,color,size=17} = opts;
+    return new TableCell({
+      width:{size:w,type:WidthType.DXA}, borders:bT(),
+      shading:{fill:bg,type:ShadingType.CLEAR},
+      margins:{top:60,bottom:60,left:100,right:100},
+      children:[new Paragraph({alignment:align,
+        children:[new TextRun({text:String(text),bold,font:'Arial',size,...(color?{color}:{})})]})]
+    });
+  };
+  const hcell = (text,w,bg='1F4E79') => new TableCell({
+    width:{size:w,type:WidthType.DXA}, borders:bM(),
+    shading:{fill:bg,type:ShadingType.CLEAR},
+    margins:{top:70,bottom:70,left:100,right:100},
+    children:[new Paragraph({alignment:AlignmentType.CENTER,
+      children:[new TextRun({text,bold:true,font:'Arial',size:17,color:'FFFFFF'})]})]
+  });
+
+  const fmtN = n => n.toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  // ── COVER LETTER ──
+  const coverChildren = [
+    // Date and city
+    p(`${contact.city}, ${contact.date}`, {align:AlignmentType.RIGHT, before:0, after:200}),
+    // Recipient
+    p(t.name, {bold:true, before:0, after:40}),
+    p(`Lokal: ${t.unit}`, {before:0, after:200, color:'555555', size:18}),
+    // Subject
+    new Paragraph({spacing:{before:0,after:80}, children:[
+      new TextRun({text:'Dotyczy: Rozliczenia opłat eksploatacyjnych za rok '+year+' r. ', font:'Arial', size:20, bold:true, underline:{}}),
+      new TextRun({text: contact.center, font:'Arial', size:20, bold:true, underline:{}}),
+    ]}),
+    gap(120),
+    p('Szanowni Państwo,', {before:0, after:120}),
+    // Body paragraph 1
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:0,after:80}, children:[
+      new TextRun({text:'Działając w imieniu i na rzecz ', font:'Arial', size:20}),
+      new TextRun({text:'FIZAR Sp. z o.o.', font:'Arial', size:20, bold:true}),
+      new TextRun({text:' z siedzibą w Będzinie (42-500), ul. Tadeusza Kościuszki 74/10A, uprzejmie informujemy, że zgodnie z zapisami Umowy Najmu, '+contact.par+' dokonaliśmy rozliczenia opłat eksploatacyjnych za okres od ', font:'Arial', size:20}),
+      new TextRun({text:'01 stycznia '+year+'r. do 31 grudnia '+year+'r.', font:'Arial', size:20, bold:true}),
+    ]}),
+    // Body paragraph 2 - financial result
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:80,after:80}, children:[
+      new TextRun({text:'Zaliczki wpłacone przez Państwa na poczet Opłat Eksploatacyjnych w tym okresie wyniosły ', font:'Arial', size:20}),
+      new TextRun({text:fmtN(paid)+' PLN', font:'Arial', size:20, bold:true}),
+      new TextRun({text:`, natomiast koszty przypadające na wynajmowaną przez Państwa powierzchnię wyniosły `, font:'Arial', size:20}),
+      new TextRun({text:fmtN(t.allocatedTotal)+' PLN', font:'Arial', size:20, bold:true}),
+      new TextRun({text:'.', font:'Arial', size:20}),
+    ]}),
+    // Result paragraph
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:80,after:80}, children:[
+      new TextRun({text:'W związku z powyższym powstała ', font:'Arial', size:20}),
+      new TextRun({text: isZwrot ? 'nadpłata' : 'niedopłata', font:'Arial', size:20, bold:true}),
+      new TextRun({text:' w wysokości ', font:'Arial', size:20}),
+      new TextRun({text:fmtN(absBalance)+' PLN', font:'Arial', size:20, bold:true, color: isZwrot?'C00000':'006400'}),
+      new TextRun({text:'.', font:'Arial', size:20}),
+    ]}),
+    // Legal consequence
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:80,after:80}, children:[
+      new TextRun({text: isZwrot
+        ? 'Zgodnie z ww. artykułem Umowy Najmu powyższe upoważnia nas do wystawienia faktury korygującej uwzględniającej nadpłatę.'
+        : 'Zgodnie z ww. artykułem Umowy Najmu powyższe skutkuje obowiązkiem dopłaty przez Państwa wskazanej kwoty. W załączeniu przesyłamy fakturę VAT na kwotę niedopłaty.',
+        font:'Arial', size:20}),
+    ]}),
+    // Appendix note
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:80,after:80}, children:[
+      new TextRun({text:'Szczegółowe rozliczenie opłat eksploatacyjnych zawiera Załącznik nr 1 do niniejszego pisma.', font:'Arial', size:20, italics:true}),
+    ]}),
+    // Contact
+    new Paragraph({alignment:AlignmentType.BOTH, spacing:{before:80,after:200}, children:[
+      new TextRun({text:'W przypadku pytań proszę o kontakt z Zarządcą Nieruchomości, ', font:'Arial', size:20}),
+      new TextRun({text: contact.manager, font:'Arial', size:20, bold:true}),
+      new TextRun({text:` (tel.: ${contact.phone}, e-mail: ${contact.email}).`, font:'Arial', size:20}),
+    ]}),
+    p('Z poważaniem,', {before:120, after:400}),
+    p(contact.manager, {bold:true, before:0, after:40}),
+    p('FIZAR Sp. z o.o.', {before:0, after:0, color:'555555', size:18}),
+    // Footer line
+    new Paragraph({spacing:{before:400,after:0},
+      border:{top:{style:BorderStyle.SINGLE,size:4,color:'CCCCCC',space:1}},
+      children:[new TextRun({text:`Fizar Sp. z o.o. | NIP: 5272771211 | ul. Tadeusza Kościuszki 74/10A, 42-500 Będzin | ${contact.date}`,
+        font:'Arial',size:14,color:'888888'})]}),
+  ];
+
+  // ── APPENDIX ──
+  // Header info rows
+  const headerW = Math.floor(LAND_CW/2);
+  const appendixHeader = [
+    new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:100},
+      children:[new TextRun({text:`Załącznik nr 1 do pisma z dnia ${contact.date}`, font:'Arial',size:18,italics:true,color:'555555'})]}),
+    new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:40},
+      children:[new TextRun({text:`Załącznik do faktury za rozliczenie opłat wspólnych za rok ${year}`, font:'Arial',size:24,bold:true,color:'1F4E79'})]}),
+    // Info table
+    new Table({width:{size:LAND_CW,type:WidthType.DXA}, columnWidths:[headerW,headerW], rows:[
+      new TableRow({children:[
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:40,bottom:20,left:0,right:60},
+          children:[new Paragraph({children:[new TextRun({text:'Nieruchomość: ',font:'Arial',size:18,bold:true}),new TextRun({text:schData.property,font:'Arial',size:18})]})]}),
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:40,bottom:20,left:60,right:0},
+          children:[new Paragraph({children:[new TextRun({text:'Rok: ',font:'Arial',size:18,bold:true}),new TextRun({text:String(year),font:'Arial',size:18})]})]}),
+      ]}),
+      new TableRow({children:[
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:20,bottom:20,left:0,right:60},
+          children:[new Paragraph({children:[new TextRun({text:'Najemca: ',font:'Arial',size:18,bold:true}),new TextRun({text:t.name,font:'Arial',size:18})]})]}),
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:20,bottom:20,left:60,right:0},
+          children:[new Paragraph({children:[new TextRun({text:'Lokal: ',font:'Arial',size:18,bold:true}),new TextRun({text:t.unit,font:'Arial',size:18})]})]}),
+      ]}),
+      new TableRow({children:[
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:20,bottom:40,left:0,right:60},
+          children:[new Paragraph({children:[new TextRun({text:'Powierzchnia: ',font:'Arial',size:18,bold:true}),new TextRun({text:`${t.area.toFixed(2)} m²  (${(t.share*100).toFixed(4)}% powierzchni centrum)`,font:'Arial',size:18})]})]}),
+        new TableCell({width:{size:headerW,type:WidthType.DXA},borders:bN(),margins:{top:20,bottom:40,left:60,right:0},
+          children:[new Paragraph({children:[new TextRun({text:'Pow. całkowita centrum: ',font:'Arial',size:18,bold:true}),new TextRun({text:`${schData.totalArea.toFixed(2)} m²`,font:'Arial',size:18})]})]}),
+      ]}),
+    ]}),
+    gap(120),
+  ];
+
+  // ── Helper: build monthly table for a section ──
+  // Columns: category name | Jan | Feb | ... | Dec | Total
+  // colWidths: name col + 12 month cols + total col
+  const nameColW = 2000;
+  const monthColW = Math.floor((LAND_CW - nameColW - 1400) / 12);
+  const totalColW = LAND_CW - nameColW - 12*monthColW;
+  const allColW = [nameColW, ...new Array(12).fill(monthColW), totalColW];
+
+  function makeMonthlyTable(title, rows, totalRow, bg='EBF3FB', headerBg='1F4E79') {
+    const headerRow = new TableRow({children:[
+      hcell(title, nameColW, headerBg),
+      ...MONTHS_SHORT.map((m,i) => hcell(m, monthColW, headerBg)),
+      hcell('RAZEM', totalColW, headerBg),
+    ]});
+
+    const dataRows = rows.map((row, idx) => {
+      const rowBg = idx%2===0 ? bg : 'FFFFFF';
+      return new TableRow({children:[
+        cell(row.name, nameColW, {bg:rowBg, bold: row.bold||false}),
+        ...row.monthly.map(v => cell(fmtN(v), monthColW, {bg:rowBg, align:AlignmentType.RIGHT})),
+        cell(fmtN(row.total), totalColW, {bg:rowBg, align:AlignmentType.RIGHT, bold:true}),
+      ]});
+    });
+
+    const totRow = new TableRow({children:[
+      cell(totalRow.name, nameColW, {bg:'D5E8F0', bold:true}),
+      ...totalRow.monthly.map(v => cell(fmtN(v), monthColW, {bg:'D5E8F0', align:AlignmentType.RIGHT, bold:true})),
+      cell(fmtN(totalRow.total), totalColW, {bg:'D5E8F0', align:AlignmentType.RIGHT, bold:true, color:'C00000'}),
+    ]});
+
+    return new Table({width:{size:LAND_CW,type:WidthType.DXA}, columnWidths:allColW,
+      rows:[headerRow,...dataRows,totRow]});
+  }
+
+  // PART 1 — Centre costs
+  const part1Rows = schData.scCategories.map(cat=>({
+    name: cat.name,
+    monthly: cat.monthly,
+    total: cat.total,
+  }));
+  const part1Total = {
+    name: 'Suma kosztów centrum',
+    monthly: schData.centreTotalMonthly,
+    total: schData.centreTotalAnnual,
+  };
+
+  // PART 2 — Tenant payments
+  const part2Rows = [{
+    name: 'SERVICE CHARGE',
+    monthly: t.payments,
+    total: paid,
+  }];
+  const part2Total = {
+    name: 'Suma wpłat',
+    monthly: t.payments,
+    total: paid,
+  };
+
+  // PART 3 — Allocated costs
+  const part3Rows = t.allocatedCats.map(cat=>({
+    name: cat.name,
+    monthly: cat.monthly,
+    total: cat.total,
+  }));
+  const part3Total = {
+    name: 'Suma kosztów najemcy',
+    monthly: t.allocatedMonthly,
+    total: t.allocatedTotal,
+  };
+
+  // PART 4 — Balance
+  const part4Rows = [{
+    name: 'Różnica (wpłaty − koszty)',
+    monthly: t.balanceMonthly,
+    total: t.balanceTotal,
+  }];
+  const part4Total = {
+    name: isZwrot ? 'NADPŁATA (ZWROT)' : 'NIEDOPŁATA (DOPŁATA)',
+    monthly: t.balanceMonthly,
+    total: t.balanceTotal,
+  };
+
+  // Section labels
+  const sectionLabel = (text) => new Paragraph({
+    spacing:{before:160,after:60},
+    children:[new TextRun({text,bold:true,font:'Arial',size:20,color:'1F4E79'})],
+    border:{bottom:{style:BorderStyle.SINGLE,size:4,color:'2E75B6',space:1}},
+  });
+
+  // Result box
+  const resultBox = new Table({width:{size:LAND_CW,type:WidthType.DXA}, columnWidths:[LAND_CW], rows:[
+    new TableRow({children:[
+      new TableCell({
+        width:{size:LAND_CW,type:WidthType.DXA},
+        borders:bM(),
+        shading:{fill: isZwrot?'F2DCDB':'E2EFDA', type:ShadingType.CLEAR},
+        margins:{top:120,bottom:120,left:200,right:200},
+        children:[
+          new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:20},
+            children:[new TextRun({text: isZwrot ? (t.resultLabel && t.resultLabel.length > 1 ? t.resultLabel.toUpperCase() + ' — ZWROT DLA NAJEMCY' : 'NADPŁATA — ZWROT DLA NAJEMCY') : 'NIEDOPŁATA — DO ZAPŁATY PRZEZ NAJEMCĘ',
+              bold:true, font:'Arial', size:22, color: isZwrot?'9C0006':'375623'})]}),
+          new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:20},
+            children:[new TextRun({text: fmtN(absBalance)+' PLN',
+              bold:true, font:'Arial', size:40, color: isZwrot?'9C0006':'375623'})]}),
+          new Paragraph({alignment:AlignmentType.CENTER, spacing:{before:0,after:0},
+            children:[new TextRun({text:`Wpłacono: ${fmtN(paid)} PLN  |  Naliczono: ${fmtN(t.allocatedTotal)} PLN`,
+              font:'Arial', size:18, color:'555555'})]}),
+        ],
+      }),
+    ]}),
+  ]});
+
+  const appendixChildren = [
+    ...appendixHeader,
+    sectionLabel('Część 1 — Koszty centrum handlowego całkowite SC'),
+    makeMonthlyTable('Kategoria kosztów SC', part1Rows, part1Total, 'EBF3FB', '1F4E79'),
+    gap(160),
+    sectionLabel('Część 2 — Faktury wystawione na najemcę (wpłacone zaliczki SC)'),
+    makeMonthlyTable('Wpłaty najemcy', part2Rows, part2Total, 'EBF3FB', '2E75B6'),
+    gap(160),
+    sectionLabel('Część 3 — Poniesione koszty przypadające na najemcę'),
+    makeMonthlyTable('Kategoria kosztów SC', part3Rows, part3Total, 'EBF3FB', '2E75B6'),
+    gap(160),
+    sectionLabel('Część 4 — Rozliczenie: wpłaty vs koszty'),
+    makeMonthlyTable('Różnica', part4Rows, part4Total, 'FCE4D6', '9C0006'),
+    gap(200),
+    resultBox,
+    gap(200),
+    new Paragraph({spacing:{before:60,after:0},
+      border:{top:{style:BorderStyle.SINGLE,size:4,color:'CCCCCC',space:1}},
+      children:[new TextRun({text:`Przygotowane przez: ${contact.manager} | ${contact.date} | Fizar Sp. z o.o.`,
+        font:'Arial',size:14,color:'888888'})]}),
+  ];
+
+  const doc = new Document({sections:[
+    // Section 1: Portrait — cover letter
+    {
+      properties:{
+        page:{
+          size:{width:PORT_W, height:PORT_H},
+          margin:{top:MARGIN, right:MARGIN, bottom:MARGIN, left:MARGIN},
+        }
+      },
+      children: coverChildren,
+    },
+    // Section 2: Landscape — appendix
+    {
+      properties:{
+        page:{
+          size:{width:LAND_W, height:LAND_H, orientation:PageOrientation.LANDSCAPE},
+          margin:{top:LAND_MARGIN, right:LAND_MARGIN, bottom:LAND_MARGIN, left:LAND_MARGIN},
+        }
+      },
+      children: appendixChildren,
+    },
+  ]});
+
+  return await Packer.toBlob(doc);
+}
+</script>
+</body>
+</html>
