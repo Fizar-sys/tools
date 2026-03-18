@@ -83,6 +83,9 @@
   }
   .meter-card.done   { border-left:3px solid var(--green); }
   .meter-card.active { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+  .meter-card.active.u-bg-C { background:rgba(249,115,22,.07); border-color:#f97316; box-shadow:0 0 0 1px #f97316; }
+  .meter-card.active.u-bg-W { background:rgba(14,165,233,.08); border-color:#0ea5e9; box-shadow:0 0 0 1px #0ea5e9; }
+  .meter-card.active.u-bg-P { background:rgba(200,210,220,.06); border-color:#94a3b8; box-shadow:0 0 0 1px #94a3b8; }
   .meter-card.warning{ border-left:3px solid var(--yellow); }
   .meter-card.error  { border-left:3px solid var(--red); }
 
@@ -274,14 +277,72 @@
 <!-- ── Panel 2: Reading ── -->
 <div class="panel" id="panel-read">
   <div id="meterList"></div>
-  <div style="height:80px"></div>
-  <div style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);
-    border-top:1px solid var(--border);padding:12px 20px;display:flex;gap:10px;
-    max-width:540px;margin:0 auto;left:50%;transform:translateX(-50%)">
-    <button onclick="finishSession()" style="flex:1;padding:12px;background:var(--surface2);
-      border:1px solid var(--border);border-radius:7px;color:var(--text);font-size:14px;
-      font-weight:500;cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">
-      Zakończ i pobierz JSON
+  <div style="height:90px"></div>
+
+  <!-- ── Bottom bar ── -->
+  <div id="bottomBar" style="position:fixed;bottom:0;left:0;right:0;background:var(--surface);
+    border-top:1px solid var(--border);padding:12px 16px;display:flex;gap:10px;
+    align-items:center;z-index:50">
+    <!-- Primary: Scan meter -->
+    <button onclick="startMeterScan()" id="btnScanMeter"
+      style="flex:1;padding:14px;background:var(--accent);color:#fff;border:none;
+      border-radius:8px;font-size:15px;font-weight:600;cursor:pointer;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;
+      justify-content:center;gap:10px;transition:background .2s;">
+      <span style="font-size:20px">📷</span> Skanuj licznik
+    </button>
+    <!-- Secondary: menu -->
+    <button onclick="toggleFinishMenu()" id="btnMenu"
+      style="padding:14px 16px;background:var(--surface2);color:var(--muted);
+      border:1px solid var(--border);border-radius:8px;font-size:18px;cursor:pointer;
+      font-family:'IBM Plex Sans',sans-serif;transition:all .2s;">
+      ···
+    </button>
+  </div>
+
+  <!-- Finish menu (hidden by default) -->
+  <div id="finishMenu" style="display:none;position:fixed;bottom:80px;right:16px;
+    background:var(--surface);border:1px solid var(--border);border-radius:10px;
+    overflow:hidden;z-index:51;min-width:220px;box-shadow:0 -4px 20px rgba(0,0,0,.4)">
+    <div style="padding:10px 16px;font-size:11px;color:var(--muted);
+      border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px">
+      Opcje sesji
+    </div>
+    <button onclick="confirmFinish()"
+      style="width:100%;padding:14px 16px;background:transparent;border:none;
+      color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
+      ⬇ Zakończ i pobierz JSON
+    </button>
+    <button onclick="toggleFinishMenu()"
+      style="width:100%;padding:12px 16px;background:transparent;border:none;
+      border-top:1px solid var(--border);color:var(--muted);font-size:13px;
+      cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">
+      Anuluj
+    </button>
+  </div>
+
+  <!-- Meter scan modal -->
+  <div id="meterScanModal" style="display:none;position:fixed;inset:0;
+    background:rgba(0,0,0,.92);z-index:200;flex-direction:column;
+    align-items:center;justify-content:center;">
+    <p style="color:#fff;font-size:13px;margin-bottom:12px;opacity:.7">
+      Skieruj kamerę na naklejkę QR licznika
+    </p>
+    <video id="meterScanVideo" style="width:100%;max-width:400px;border-radius:8px;background:#000"
+      autoplay playsinline></video>
+    <!-- Scan frame overlay -->
+    <div style="position:absolute;width:200px;height:200px;border:2px solid var(--accent);
+      border-radius:8px;pointer-events:none;box-shadow:0 0 0 9999px rgba(0,0,0,.5)"></div>
+    <canvas id="meterScanCanvas" style="display:none"></canvas>
+    <p style="color:var(--accent);font-size:13px;margin-top:16px" id="meterScanStatus">
+      Szukam kodu QR...
+    </p>
+    <button onclick="stopMeterScan()"
+      style="margin-top:16px;padding:12px 28px;background:transparent;color:#fff;
+      border:1px solid rgba(255,255,255,.3);border-radius:8px;font-size:14px;
+      cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">
+      Anuluj
     </button>
   </div>
 </div>
@@ -574,15 +635,18 @@ function createMeterCard(m) {
 
 // ── Open / close meter ────────────────────────────────────────────────────
 function openMeter(id) {
-  // Close previous
   if (activeMeterId && activeMeterId !== id) {
     const prev = document.getElementById(`card-${activeMeterId}`);
-    if (prev) prev.classList.remove('active');
+    if (prev) {
+      prev.classList.remove('active','u-bg-C','u-bg-W','u-bg-P');
+    }
   }
   activeMeterId = id;
   const card = document.getElementById(`card-${id}`);
   if (!card) return;
+  const meter = METERS.find(m => m.id === id);
   card.classList.add('active');
+  if (meter) card.classList.add(`u-bg-${meter.u}`);
   card.scrollIntoView({behavior:'smooth', block:'center'});
   document.getElementById(`inp-${id}`).focus();
 }
@@ -948,6 +1012,114 @@ function processQRData(raw) {
   }
 }
 window.processQRData = processQRData;
+
+// ── Meter QR scanner ─────────────────────────────────────────────────────
+let meterScanStream = null;
+let meterScanInterval = null;
+
+function toggleFinishMenu() {
+  const menu = document.getElementById('finishMenu');
+  menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+}
+window.toggleFinishMenu = toggleFinishMenu;
+
+// Close menu if tapping outside
+document.addEventListener('click', e => {
+  const menu = document.getElementById('finishMenu');
+  const btn  = document.getElementById('btnMenu');
+  if (menu && btn && !menu.contains(e.target) && !btn.contains(e.target)) {
+    menu.style.display = 'none';
+  }
+});
+
+function confirmFinish() {
+  toggleFinishMenu();
+  const done = Object.values(readings).filter(r => !r.skipped && r.current !== null).length;
+  const remaining = METERS.length - Object.keys(readings).length;
+  const msg = remaining > 0
+    ? `Pozostało jeszcze ${remaining} liczników bez odczytu.\n\nCzy na pewno zakończyć sesję?`
+    : `Wszystkie liczniki odczytane.\n\nPobierz plik JSON?`;
+  if (confirm(msg)) finishSession();
+}
+window.confirmFinish = confirmFinish;
+
+async function startMeterScan() {
+  const modal = document.getElementById('meterScanModal');
+  const video = document.getElementById('meterScanVideo');
+  const status = document.getElementById('meterScanStatus');
+  modal.style.display = 'flex';
+  status.textContent = 'Uruchamiam kamerę...';
+
+  try {
+    meterScanStream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: 'environment', width: { ideal: 1280 }, height: { ideal: 720 } }
+    });
+    video.srcObject = meterScanStream;
+    await video.play();
+    status.textContent = 'Szukam kodu QR...';
+
+    const canvas = document.getElementById('meterScanCanvas');
+    const ctx = canvas.getContext('2d');
+
+    meterScanInterval = setInterval(() => {
+      if (video.readyState !== video.HAVE_ENOUGH_DATA) return;
+      canvas.width  = video.videoWidth;
+      canvas.height = video.videoHeight;
+      ctx.drawImage(video, 0, 0);
+      const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+      const code = jsQR(imageData.data, canvas.width, canvas.height, {
+        inversionAttempts: 'dontInvert'
+      });
+      if (code && code.data) {
+        const scanned = code.data.trim();
+        // Check what was scanned
+        if (scanned.startsWith('LICZ_')) {
+          // Meter sticker QR
+          stopMeterScan();
+          jumpToMeter(scanned);
+        } else if (scanned.startsWith('{')) {
+          // Previous readings QR - wrong QR, inform user
+          stopMeterScan();
+          alert('To jest kod QR z poprzednimi odczytami, nie naklejka licznika.\nUżyj tego kodu tylko na ekranie startowym.');
+        } else {
+          status.textContent = '⚠️ Nieznany kod — szukam dalej...';
+        }
+      }
+    }, 150);
+  } catch(e) {
+    modal.style.display = 'none';
+    alert('Brak dostępu do kamery.');
+  }
+}
+window.startMeterScan = startMeterScan;
+
+function stopMeterScan() {
+  if (meterScanInterval) { clearInterval(meterScanInterval); meterScanInterval = null; }
+  if (meterScanStream)   { meterScanStream.getTracks().forEach(t => t.stop()); meterScanStream = null; }
+  document.getElementById('meterScanModal').style.display = 'none';
+}
+window.stopMeterScan = stopMeterScan;
+
+function jumpToMeter(id) {
+  // Check if meter exists
+  const meter = METERS.find(m => m.id === id);
+  if (!meter) {
+    alert(`Nie znaleziono licznika: ${id}\nSprawdź czy to właściwy plik odczytów.`);
+    return;
+  }
+  // Check if already done
+  if (readings[id] && !readings[id].skipped) {
+    const val = readings[id].value;
+    if (!confirm(`Licznik ${meter.name} ma już odczyt: ${val} ${meter.unit}.\nCzy chcesz go poprawić?`)) return;
+    // Reopen - remove from readings
+    delete readings[id];
+    const card = document.getElementById(`card-${id}`);
+    if (card) card.classList.remove('done','warning','error');
+    updateProgress();
+  }
+  openMeter(id);
+}
+window.jumpToMeter = jumpToMeter;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
