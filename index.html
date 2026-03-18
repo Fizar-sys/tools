@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fizar — Narzędzia</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg: #0f1117; --surface: #181c27; --surface2: #1e2435;
+    --border: #2a3148; --accent: #3b82f6; --accent2: #1d4ed8;
+    --text: #e2e8f0; --muted: #64748b;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    min-height: 100vh;
+    display: flex; flex-direction: column;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 20px 40px;
+    display: flex; align-items: center; gap: 16px;
+  }
+  .logo {
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 20px; color: var(--accent);
+  }
+  .logo span { color: var(--muted); font-weight: 400; }
+  .tagline { color: var(--muted); font-size: 13px; margin-left: 8px; }
+
+  main {
+    flex: 1;
+    max-width: 800px;
+    margin: 60px auto;
+    padding: 0 24px;
+    width: 100%;
+  }
+
+  h1 {
+    font-size: 28px; font-weight: 500;
+    margin-bottom: 8px;
+  }
+  .subtitle {
+    color: var(--muted); font-size: 14px;
+    margin-bottom: 48px;
+  }
+
+  .tools-grid {
+    display: flex; flex-direction: column; gap: 16px;
+  }
+
+  .tool-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 28px 32px;
+    display: flex; align-items: center; gap: 28px;
+    text-decoration: none;
+    color: var(--text);
+    transition: border-color .2s, background .2s, transform .15s;
+  }
+  .tool-card:hover {
+    border-color: var(--accent);
+    background: rgba(59,130,246,.06);
+    transform: translateY(-2px);
+  }
+
+  .tool-icon {
+    width: 52px; height: 52px; border-radius: 10px;
+    background: rgba(59,130,246,.15);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 24px; flex-shrink: 0;
+  }
+
+  .tool-info { flex: 1; }
+  .tool-name {
+    font-size: 17px; font-weight: 600; margin-bottom: 6px;
+  }
+  .tool-desc {
+    font-size: 13px; color: var(--muted); line-height: 1.5;
+  }
+  .tool-tag {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 11px; font-weight: 600;
+    padding: 4px 10px; border-radius: 20px;
+    background: rgba(59,130,246,.12); color: var(--accent);
+    flex-shrink: 0;
+  }
+
+  footer {
+    text-align: center;
+    padding: 32px;
+    color: var(--muted);
+    font-size: 12px;
+    border-top: 1px solid var(--border);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">FIZAR<span>.tools</span></div>
+  <span class="tagline">Narzędzia zarządcy nieruchomości</span>
+</header>
+
+<main>
+  <h1>Dostępne narzędzia</h1>
+  <p class="subtitle">Wybierz narzędzie które chcesz uruchomić</p>
+
+  <div class="tools-grid">
+
+    <a class="tool-card" href="wezwania/">
+      <div class="tool-icon">📄</div>
+      <div class="tool-info">
+        <div class="tool-name">Wezwania do zapłaty</div>
+        <div class="tool-desc">
+          Generuje wezwania do zapłaty na podstawie raportu struktury wiekowej należności
+          (Aging Report) z systemu enova365. Wczytaj PDF, oznacz najemców, pobierz pisma w ZIP.
+        </div>
+      </div>
+      <div class="tool-tag">AGING → DOCX</div>
+    </a>
+
+    <a class="tool-card" href="sch/">
+      <div class="tool-icon">📊</div>
+      <div class="tool-info">
+        <div class="tool-name">Rozliczenie opłat eksploatacyjnych (SCH)</div>
+        <div class="tool-desc">
+          Generuje listy przewodnie i załączniki do rozliczenia rocznego opłat wspólnych
+          dla najemców oznaczonych SC. Wczytaj plik Excel, sprawdź wyniki, pobierz komplety w ZIP.
+        </div>
+      </div>
+      <div class="tool-tag">SCH → DOCX</div>
+    </a>
+
+  </div>
+</main>
+
+<footer>
+  Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin
+</footer>
+
+</body>
+</html>
