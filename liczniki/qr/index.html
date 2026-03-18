@@ -69,19 +69,22 @@
   .card {
     background:#fff; color:#111; border-radius:8px; padding:10px 8px;
     display:flex; flex-direction:column; align-items:center; gap:4px;
-    border:2px solid transparent; cursor:default;
+    border:2px solid transparent; cursor:default; width:100%;
   }
   .card canvas { width:72px!important; height:72px!important; display:block; }
+  .c-toprow {
+    display:flex; justify-content:space-between; align-items:center;
+    width:100%; padding:0 2px;
+  }
   .c-util { font-size:8px; font-weight:700; letter-spacing:.8px; text-transform:uppercase;
-    padding:2px 6px; border-radius:2px; align-self:flex-end; }
+    padding:2px 6px; border-radius:2px; }
   .c-util.C { background:#fee2e2; color:#991b1b; }
   .c-util.W { background:#cffafe; color:#0e7490; }
   .c-util.P { background:#fef3c7; color:#92400e; }
-  .c-bldg { font-size:8px; color:#777; text-transform:uppercase; letter-spacing:.5px; }
-  .c-loc  { font-size:12px; font-weight:700; color:#000; text-align:center; }
-  .c-shared { font-size:9px; color:#666; }
-  .c-name { font-size:7.5px; color:#666; text-align:center; line-height:1.3; }
-  .c-id   { font-size:6.5px; color:#aaa; text-align:center; word-break:break-all; margin-top:2px; }
+  .c-bldg  { font-size:8px; color:#777; text-transform:uppercase; letter-spacing:.5px; }
+  .c-name  { font-size:11px; font-weight:700; color:#000; text-align:center; line-height:1.3; }
+  .c-loc   { font-size:9px; color:#666; text-align:center; }
+  .c-shared{ font-size:9px; color:#999; }
 
   #empty { display:none; text-align:center; padding:60px; color:var(--muted); }
 
@@ -106,12 +109,12 @@
       background: #fff !important;
     }
     .card canvas { width: 20mm !important; height: 20mm !important; }
+    .c-toprow { width: 100% !important; }
     .c-util   { font-size: 5.5pt !important; }
     .c-bldg   { font-size: 5pt   !important; }
-    .c-loc    { font-size: 9pt   !important; font-weight: 900 !important; }
-    .c-shared { font-size: 6pt   !important; }
-    .c-name   { font-size: 5pt   !important; }
-    .c-id     { font-size: 4pt   !important; }
+    .c-name   { font-size: 8pt   !important; font-weight: 700 !important; }
+    .c-loc    { font-size: 6pt   !important; color: #666 !important; }
+    .c-shared { font-size: 5.5pt !important; }
   }
   #psheet { display: none; }
 </style>
@@ -277,32 +280,18 @@ function stickerContent(m, forPrint) {
   const bldg  = BLDG_LABEL[m.bld] || m.bld;
   const floor = m.fl !== null ? `P${m.fl}` : null;
   const prem  = m.pr || null;
+  const loc   = [floor, prem].filter(Boolean).join(' · ');
+  const util  = m.u==='C'?'Ciepło':m.u==='W'?'Woda':'Prąd';
 
-  if (forPrint) {
-    return `
-      <span class="ps-util ${m.u}">${m.u==='C'?'Ciepło':m.u==='W'?'Woda':'Prąd'}</span>
-      <div class="ps-qr qr-target"></div>
-      <span class="ps-bldg">${bldg}</span>
-      ${floor||prem
-        ? `<div style="display:flex;gap:2mm;align-items:baseline">
-             ${floor?`<span class="ps-floor">${floor}</span>`:''}
-             ${prem ?`<span class="ps-prem">${prem}</span>`:''}
-           </div>`
-        : `<span class="ps-shared">wspólny</span>`}
-      <span class="ps-name">${m.name}</span>
-      <span class="ps-id">${m.id}</span>
-    `;
-  } else {
-    return `
-      <span class="c-util ${m.u}">${m.u==='C'?'Ciepło':m.u==='W'?'Woda':'Prąd'}</span>
-      <div class="qr-target" style="width:72px;height:72px"></div>
+  return `
+    <div class="c-toprow">
       <span class="c-bldg">${bldg}</span>
-      ${floor||prem
-        ? `<span class="c-loc">${floor||''} ${prem||''}</span>`
-        : `<span class="c-shared">wspólny</span>`}
-      <span class="c-name">${m.name}</span>
-    `;
-  }
+      <span class="c-util ${m.u}">${util}</span>
+    </div>
+    <div class="qr-target" style="width:72px;height:72px"></div>
+    <span class="c-name">${m.name}</span>
+    ${loc ? `<span class="c-loc">${loc}</span>` : `<span class="c-shared">wspólny</span>`}
+  `;
 }
 
 function makeQR(id, size) {
@@ -357,7 +346,7 @@ async function renderGrid() {
   for (const m of list) {
     const card = document.createElement('div');
     card.className = 'card';
-    card.innerHTML = stickerContent(m, false);
+    card.innerHTML = stickerContent(m);
     grid.appendChild(card);
     const container = card.querySelector('.qr-target');
     await renderQR(container, m.id, 72);
