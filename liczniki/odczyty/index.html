@@ -912,6 +912,7 @@ function finishSession() {
   document.getElementById('statDone').textContent = `${done} odczytów`;
   document.getElementById('statSkip').textContent = `${skip} pominięto`;
 
+  deactivateBackGuard();
   document.getElementById('panel-read').classList.remove('active');
   document.getElementById('panel-done').classList.add('active');
 }
@@ -1126,34 +1127,45 @@ function jumpToMeter(id) {
 }
 window.jumpToMeter = jumpToMeter;
 
-// ── Back button protection ───────────────────────────────────────────────────
-// Push a state so we can intercept the back button during an active session
+// ── Back button / navigation protection ──────────────────────────────────────
+// beforeunload fires on EVERY navigation attempt reliably.
+// popstate re-push traps Android back button continuously.
+// Session ends ONLY via deliberate menu action.
+
+let sessionGuardActive = false;
+
 function activateBackGuard() {
-  history.pushState({sessionActive: true}, '');
-  window.addEventListener('popstate', handleBackButton);
+  sessionGuardActive = true;
+  window.addEventListener('beforeunload', beforeUnloadHandler);
+  // Pre-fill history stack so back button has nowhere to go
+  history.pushState({s:1}, '');
+  history.pushState({s:2}, '');
+  history.pushState({s:3}, '');
+  window.addEventListener('popstate', popStateHandler);
 }
 
-function handleBackButton(e) {
-  const panel = document.getElementById('panel-read');
-  if (!panel.classList.contains('active')) return;
-  // Re-push state so back button keeps being intercepted
-  history.pushState({sessionActive: true}, '');
-  // Show confirmation
-  const done = Object.values(readings).filter(r => !r.skipped && r.current !== null).length;
-  const msg = done > 0
-    ? `Masz ${done} wprowadzonych odczytów.
+function beforeUnloadHandler(e) {
+  if (!sessionGuardActive) return;
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+}
 
-Czy na pewno chcesz opuścić sesję? Niezapisane dane zostaną utracone.
+function popStateHandler() {
+  if (!sessionGuardActive) return;
+  // Continuously re-fill the stack — back button never escapes
+  history.pushState({s:1}, '');
+  history.pushState({s:2}, '');
+  history.pushState({s:3}, '');
+}
 
-Użyj przycisku ··· → Zakończ i pobierz JSON aby zapisać dane.`
-    : `Czy na pewno chcesz opuścić sesję?`;
-  if (confirm(msg)) {
-    // User confirmed exit — remove guard and go back
-    window.removeEventListener('popstate', handleBackButton);
-    history.back();
-  }
+function deactivateBackGuard() {
+  sessionGuardActive = false;
+  window.removeEventListener('beforeunload', beforeUnloadHandler);
+  window.removeEventListener('popstate', popStateHandler);
 }
 window.activateBackGuard = activateBackGuard;
+window.deactivateBackGuard = deactivateBackGuard;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
