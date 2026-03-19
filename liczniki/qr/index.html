@@ -98,7 +98,7 @@
     main { padding: 0 !important; max-width: none !important; margin: 0 !important; }
     #grid {
       display: grid !important;
-      grid-template-columns: repeat(5, 1fr) !important;
+      grid-template-columns: repeat(6, 1fr) !important;
       gap: 3mm !important;
     }
     .card {
@@ -109,7 +109,7 @@
       break-inside: avoid !important;
       background: #fff !important;
     }
-    .card canvas { width: 24mm !important; height: 24mm !important; }
+    .card canvas { width: 19mm !important; height: 19mm !important; }
     .c-toprow { width: 100% !important; }
     .c-util   { font-size: 5.5pt !important; padding: 1px 4px !important; }
     .c-bldg   { font-size: 5pt   !important; }
@@ -304,7 +304,7 @@ function makeQR(id, size) {
   const canvas = document.createElement('canvas');
   const moduleCount = qr.getModuleCount();
   const cellSize = Math.floor(size / moduleCount);
-  const margin = Math.floor(cellSize * 1);
+  const margin = Math.floor(cellSize * 0.5);
   canvas.width  = moduleCount * cellSize + margin * 2;
   canvas.height = moduleCount * cellSize + margin * 2;
   const ctx = canvas.getContext('2d');
