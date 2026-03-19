@@ -308,17 +308,19 @@
       border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.5px">
       Opcje sesji
     </div>
+    <button onclick="toggleFinishMenu()"
+      style="width:100%;padding:14px 16px;background:var(--accent);border:none;
+      color:#fff;font-size:15px;font-weight:700;cursor:pointer;text-align:center;
+      font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;
+      justify-content:center;gap:10px;">
+      ← Kontynuuj sesję
+    </button>
     <button onclick="confirmFinish()"
       style="width:100%;padding:14px 16px;background:transparent;border:none;
+      border-top:1px solid var(--border);
       color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;
       font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
       ⬇ Zakończ i pobierz JSON
-    </button>
-    <button onclick="toggleFinishMenu()"
-      style="width:100%;padding:12px 16px;background:transparent;border:none;
-      border-top:1px solid var(--border);color:var(--muted);font-size:13px;
-      cursor:pointer;font-family:'IBM Plex Sans',sans-serif;">
-      Anuluj
     </button>
   </div>
 
@@ -551,6 +553,7 @@ function startSession() {
 
   renderMeterList();
   updateProgress();
+  activateBackGuard();
 }
 window.startSession = startSession;
 
@@ -920,7 +923,9 @@ function downloadJSON() {
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `odczyty_GRUDZ_${data.readingDate}.json`;
+  // Add timestamp suffix so multiple sessions on same date don't overwrite
+  const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  a.download = `odczyty_GRUDZ_${data.readingDate}_${ts}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
@@ -1120,6 +1125,35 @@ function jumpToMeter(id) {
   openMeter(id);
 }
 window.jumpToMeter = jumpToMeter;
+
+// ── Back button protection ───────────────────────────────────────────────────
+// Push a state so we can intercept the back button during an active session
+function activateBackGuard() {
+  history.pushState({sessionActive: true}, '');
+  window.addEventListener('popstate', handleBackButton);
+}
+
+function handleBackButton(e) {
+  const panel = document.getElementById('panel-read');
+  if (!panel.classList.contains('active')) return;
+  // Re-push state so back button keeps being intercepted
+  history.pushState({sessionActive: true}, '');
+  // Show confirmation
+  const done = Object.values(readings).filter(r => !r.skipped && r.current !== null).length;
+  const msg = done > 0
+    ? `Masz ${done} wprowadzonych odczytów.
+
+Czy na pewno chcesz opuścić sesję? Niezapisane dane zostaną utracone.
+
+Użyj przycisku ··· → Zakończ i pobierz JSON aby zapisać dane.`
+    : `Czy na pewno chcesz opuścić sesję?`;
+  if (confirm(msg)) {
+    // User confirmed exit — remove guard and go back
+    window.removeEventListener('popstate', handleBackButton);
+    history.back();
+  }
+}
+window.activateBackGuard = activateBackGuard;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
