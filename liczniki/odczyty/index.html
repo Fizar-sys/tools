@@ -90,6 +90,7 @@
   .meter-card.error  { border-left:3px solid var(--red); }
 
   .mc-header { padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; }
+  .meter-card.done .mc-header { padding-bottom:4px; }
   .mc-status { width:10px; height:10px; border-radius:50%; background:var(--border); flex-shrink:0; }
   .meter-card.done   .mc-status { background:var(--green); }
   .meter-card.active .mc-status { background:var(--accent); }
@@ -104,9 +105,10 @@
   /* ── Done card two-column summary ── */
   .mc-summary {
     display:none;
-    padding:0 16px 12px 38px;
-    gap:4px;
+    padding:0 16px 10px 38px;
+    gap:2px;
     flex-direction:column;
+    margin-top:-6px;
   }
   .meter-card.done .mc-summary { display:flex; }
   .mc-summary-row {
