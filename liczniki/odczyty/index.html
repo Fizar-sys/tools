@@ -110,14 +110,12 @@
   }
   .meter-card.done .mc-summary { display:flex; }
   .mc-summary-row {
-    display:flex; justify-content:space-between; align-items:baseline;
-    font-family:'IBM Plex Mono',monospace; font-size:13px;
+    display:flex; justify-content:flex-end; align-items:baseline; gap:4px;
+    font-family:'IBM Plex Mono',monospace; font-size:14px;
   }
-  .mc-summary-label { font-size:11px; color:var(--muted); }
-  .mc-val-prev    { color:var(--yellow);   font-weight:600; }
-  .mc-val-current { color:var(--green);    font-weight:600; }
-  .mc-val-diff    { color:#06b6d4;         font-weight:600; }
-  .mc-val-skip    { color:var(--muted);    font-style:italic; }
+  .mc-val-current { color:var(--green);  font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:14px; }
+  .mc-val-diff    { color:#06b6d4;       font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:14px; }
+  .mc-val-skip    { color:var(--muted);  font-style:italic; font-size:13px; }
   .mc-val-unit    { font-size:10px; color:#94a3b8; margin-left:3px; }
 
   /* Input area */
@@ -766,11 +764,6 @@ function updateCardSummary(id) {
   if (reading.skipped) {
     summaryEl.innerHTML = `
       <div class="mc-summary-row">
-        <span class="mc-summary-label">prev</span>
-        <span><span class="mc-val-prev">${prev !== undefined ? fmtNum(prev) : '—'}</span><span class="mc-val-unit">${unit}</span></span>
-      </div>
-      <div class="mc-summary-row">
-        <span class="mc-summary-label"></span>
         <span class="mc-val-skip">pominięto ⏭</span>
       </div>`;
     return;
@@ -784,16 +777,12 @@ function updateCardSummary(id) {
 
   summaryEl.innerHTML = `
     <div class="mc-summary-row">
-      <span class="mc-summary-label">prev</span>
-      <span><span class="mc-val-prev">${prev !== undefined ? fmtNum(prev) : '—'}</span><span class="mc-val-unit">${unit}</span></span>
+      <span class="mc-val-current">${fmtNum(curr)}</span>
+      <span class="mc-val-unit">${unit}</span>
     </div>
     <div class="mc-summary-row">
-      <span class="mc-summary-label">now</span>
-      <span><span class="mc-val-current">${fmtNum(curr)}</span><span class="mc-val-unit">${unit}</span></span>
-    </div>
-    <div class="mc-summary-row">
-      <span class="mc-summary-label">Δ</span>
-      <span><span class="mc-val-diff">${diffStr}</span><span class="mc-val-unit">${unit}</span></span>
+      <span class="mc-val-diff">${diffStr}</span>
+      <span class="mc-val-unit">${unit}</span>
     </div>`;
 }
 
