@@ -320,7 +320,7 @@
       border-top:1px solid var(--border);
       color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;
       font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
-      ⬇ Zakończ i wyślij
+      ✅ Zakończ i wyślij
     </button>
   </div>
 
@@ -358,9 +358,10 @@
     <div class="stat-pill stat-done" id="statDone">— odczytów</div>
     <div class="stat-pill stat-skip" id="statSkip">— pominięto</div>
   </div>
-  <button class="btn-download" onclick="sendOrDownload()" id="btnSend">📤 Wyślij do Fizar</button>
-  <p id="sendStatus" style="font-size:13px;min-height:20px;margin-top:12px;"></p>
-  <button class="btn-restart" onclick="location.reload()">← Nowa sesja</button>
+  <p id="sendStatus" style="font-size:13px;min-height:20px;margin-bottom:16px;"></p>
+  <button class="btn-download" onclick="sendFile()" id="btnSend">📤 Wyślij ponownie</button>
+  <button class="btn-restart" onclick="downloadJSON()" style="margin-top:8px;">⬇ Pobierz lokalnie</button>
+  <button class="btn-restart" onclick="resumeSession()">← Kontynuuj sesję</button>
 </div>
 
 <!-- ── Camera modal ── -->
@@ -915,20 +916,23 @@ function finishSession() {
 
   document.getElementById('panel-read').classList.remove('active');
   document.getElementById('panel-done').classList.add('active');
+
 }
 window.finishSession = finishSession;
 
-function getExportBlob() {
+// ── Export helpers ────────────────────────────────────────────────────────
+function getExportFile() {
   const data = window._exportData;
   if (!data) return null;
   const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
   const fileName = `odczyty_${data.property}_${data.readingDate}_${ts}.json`;
   const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  return { blob, fileName, data };
+  const file = new File([blob], fileName, {type:'application/json'});
+  return { blob, file, fileName, data };
 }
 
 function downloadJSON() {
-  const result = getExportBlob();
+  const result = getExportFile();
   if (!result) return;
   const a = document.createElement('a');
   a.href = URL.createObjectURL(result.blob);
@@ -937,53 +941,57 @@ function downloadJSON() {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
+  setStatus('⬇ Plik pobrany lokalnie.', 'var(--muted)');
 }
 window.downloadJSON = downloadJSON;
 
-async function sendOrDownload() {
-  const result = getExportBlob();
+function resumeSession() {
+  document.getElementById('panel-done').classList.remove('active');
+  document.getElementById('panel-read').classList.add('active');
+}
+window.resumeSession = resumeSession;
+
+function setStatus(msg, color) {
+  const el = document.getElementById('sendStatus');
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = color || 'var(--muted)';
+}
+
+async function sendFile() {
+  const result = getExportFile();
   if (!result) return;
+  const { file, fileName, data } = result;
 
-  const { blob, fileName, data } = result;
-  const statusEl = document.getElementById('sendStatus');
   const btn = document.getElementById('btnSend');
+  if (btn) btn.disabled = true;
+  setStatus('📤 Wysyłanie...', 'var(--muted)');
 
-  // Try Web Share API first (mobile — opens native share sheet)
-  if (navigator.canShare) {
-    const file = new File([blob], fileName, {type:'application/json'});
-    if (navigator.canShare({files:[file]})) {
-      try {
-        await navigator.share({
-          files: [file],
-          title: `Odczyty ${data.property} ${data.readingDate}`,
-          text: `Odczyty liczników ${data.property} za ${data.refDate} — wyślij na testsm@fizar.pl`
-        });
-        statusEl.textContent = '✅ Plik udostępniony';
-        statusEl.style.color = 'var(--green)';
+  if (navigator.canShare && navigator.canShare({files:[file]})) {
+    try {
+      await navigator.share({
+        files: [file],
+        title: `Odczyty ${data.property} ${data.readingDate}`,
+        text: `Odczyty liczników ${data.property} za ${data.refDate} — wyślij na testsm@fizar.pl`
+      });
+      setStatus('✅ Plik wysłany!', 'var(--green)');
+      if (btn) btn.disabled = false;
+      return;
+    } catch(e) {
+      if (e.name === 'AbortError') {
+        setStatus('', '');
+        if (btn) btn.disabled = false;
         return;
-      } catch(e) {
-        // User cancelled share — fall through to download
-        if (e.name === 'AbortError') {
-          statusEl.textContent = '';
-          return;
-        }
       }
     }
   }
 
-  // Fallback: download + show email hint
+  // Fallback: download only + instruction
   downloadJSON();
-  statusEl.innerHTML = '⬇ Pobrano. Wyślij plik na: <strong style="color:var(--text)">testsm@fizar.pl</strong>';
-  statusEl.style.color = 'var(--muted)';
-
-  // Also open mail client with pre-filled subject
-  setTimeout(() => {
-    const subject = encodeURIComponent(`Odczyty ${data.property} ${data.readingDate}`);
-    const body = encodeURIComponent(`Odczyty liczników ${data.property} za ${data.refDate}.\n\nPlik w załączniku: ${fileName}`);
-    window.open(`mailto:testsm@fizar.pl?subject=${subject}&body=${body}`);
-  }, 800);
+  setStatus('⬇ Plik pobrany. Otwórz WhatsApp lub Outlook i wyślij plik na testsm@fizar.pl', 'var(--yellow)');
+  if (btn) btn.disabled = false;
 }
-window.sendOrDownload = sendOrDownload;
+window.sendFile = sendFile;
 
 // ── QR Scanner ───────────────────────────────────────────────────────────────
 let qrScanStream = null;
