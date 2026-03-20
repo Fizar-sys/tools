@@ -101,6 +101,25 @@
     text-align:right; flex-shrink:0; }
   .mc-prev small { display:block; font-size:10px; color:#94a3b8; margin-top:2px; }
 
+  /* ── Done card two-column summary ── */
+  .mc-summary {
+    display:none;
+    padding:0 16px 12px 38px;
+    gap:4px;
+    flex-direction:column;
+  }
+  .meter-card.done .mc-summary { display:flex; }
+  .mc-summary-row {
+    display:flex; justify-content:space-between; align-items:baseline;
+    font-family:'IBM Plex Mono',monospace; font-size:13px;
+  }
+  .mc-summary-label { font-size:11px; color:var(--muted); }
+  .mc-val-prev    { color:var(--yellow);   font-weight:600; }
+  .mc-val-current { color:var(--green);    font-weight:600; }
+  .mc-val-diff    { color:#06b6d4;         font-weight:600; }
+  .mc-val-skip    { color:var(--muted);    font-style:italic; }
+  .mc-val-unit    { font-size:10px; color:#94a3b8; margin-left:3px; }
+
   /* Input area */
   .mc-body { display:none; padding:0 16px 16px; }
   .meter-card.active .mc-body { display:block; }
@@ -607,8 +626,10 @@ function createMeterCard(m) {
       </div>
       <div class="mc-prev">
         <span style="color:var(--yellow);font-weight:600">${prevStr}</span> <span style="font-size:10px;color:#94a3b8">${m.unit}</span>
-        <small>${refDate || '—'}</small>
       </div>
+    </div>
+    <div class="mc-summary" id="summary-${m.id}">
+      <!-- filled by updateCardSummary() -->
     </div>
     <div class="mc-body">
       <div class="ocr-status" id="ocr-status-${m.id}"></div>
@@ -712,9 +733,10 @@ function confirmReading(id) {
   readings[id] = { value: val, skipped: false, ocrUsed: false };
 
   const card = document.getElementById(`card-${id}`);
-  card.classList.remove('active','warning','error');
+  card.classList.remove('active','warning','error','u-bg-C','u-bg-W','u-bg-P');
   card.classList.add('done');
 
+  updateCardSummary(id);
   updateProgress();
   moveToNext(id);
 }
@@ -723,12 +745,57 @@ window.confirmReading = confirmReading;
 function skipMeter(id) {
   readings[id] = { value: null, skipped: true, ocrUsed: false };
   const card = document.getElementById(`card-${id}`);
-  card.classList.remove('active');
+  card.classList.remove('active','u-bg-C','u-bg-W','u-bg-P');
   card.classList.add('warning');
+  updateCardSummary(id);
   updateProgress();
   moveToNext(id);
 }
 window.skipMeter = skipMeter;
+
+function updateCardSummary(id) {
+  const summaryEl = document.getElementById(`summary-${id}`);
+  if (!summaryEl) return;
+  const meter   = METERS.find(m => m.id === id);
+  const reading = readings[id];
+  const prev    = prevReadings[id];
+  const unit    = meter ? meter.unit : '';
+
+  if (!reading) { summaryEl.innerHTML = ''; return; }
+
+  if (reading.skipped) {
+    summaryEl.innerHTML = `
+      <div class="mc-summary-row">
+        <span class="mc-summary-label">prev</span>
+        <span><span class="mc-val-prev">${prev !== undefined ? fmtNum(prev) : '—'}</span><span class="mc-val-unit">${unit}</span></span>
+      </div>
+      <div class="mc-summary-row">
+        <span class="mc-summary-label"></span>
+        <span class="mc-val-skip">pominięto ⏭</span>
+      </div>`;
+    return;
+  }
+
+  const curr = reading.value;
+  const diff = (prev !== undefined && curr !== null) ? curr - prev : null;
+  const diffStr = diff !== null
+    ? (diff >= 0 ? '+' : '') + fmtNum(diff)
+    : '—';
+
+  summaryEl.innerHTML = `
+    <div class="mc-summary-row">
+      <span class="mc-summary-label">prev</span>
+      <span><span class="mc-val-prev">${prev !== undefined ? fmtNum(prev) : '—'}</span><span class="mc-val-unit">${unit}</span></span>
+    </div>
+    <div class="mc-summary-row">
+      <span class="mc-summary-label">now</span>
+      <span><span class="mc-val-current">${fmtNum(curr)}</span><span class="mc-val-unit">${unit}</span></span>
+    </div>
+    <div class="mc-summary-row">
+      <span class="mc-summary-label">Δ</span>
+      <span><span class="mc-val-diff">${diffStr}</span><span class="mc-val-unit">${unit}</span></span>
+    </div>`;
+}
 
 function moveToNext(currentId) {
   const idx = METERS.findIndex(m => m.id === currentId);
