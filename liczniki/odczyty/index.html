@@ -320,7 +320,7 @@
       border-top:1px solid var(--border);
       color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;
       font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
-      ⬇ Zakończ i pobierz JSON
+      ⬇ Zakończ i wyślij
     </button>
   </div>
 
@@ -358,7 +358,8 @@
     <div class="stat-pill stat-done" id="statDone">— odczytów</div>
     <div class="stat-pill stat-skip" id="statSkip">— pominięto</div>
   </div>
-  <button class="btn-download" onclick="downloadJSON()">⬇ Pobierz plik JSON</button>
+  <button class="btn-download" onclick="sendOrDownload()" id="btnSend">📤 Wyślij do Fizar</button>
+  <p id="sendStatus" style="font-size:13px;min-height:20px;margin-top:12px;"></p>
   <button class="btn-restart" onclick="location.reload()">← Nowa sesja</button>
 </div>
 
@@ -912,27 +913,77 @@ function finishSession() {
   document.getElementById('statDone').textContent = `${done} odczytów`;
   document.getElementById('statSkip').textContent = `${skip} pominięto`;
 
-  deactivateBackGuard();
   document.getElementById('panel-read').classList.remove('active');
   document.getElementById('panel-done').classList.add('active');
 }
 window.finishSession = finishSession;
 
-function downloadJSON() {
+function getExportBlob() {
   const data = window._exportData;
-  if (!data) return;
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  // Add timestamp suffix so multiple sessions on same date don't overwrite
+  if (!data) return null;
   const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-  a.download = `odczyty_GRUDZ_${data.readingDate}_${ts}.json`;
+  const fileName = `odczyty_${data.property}_${data.readingDate}_${ts}.json`;
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+  return { blob, fileName, data };
+}
+
+function downloadJSON() {
+  const result = getExportBlob();
+  if (!result) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(result.blob);
+  a.download = result.fileName;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
 }
 window.downloadJSON = downloadJSON;
+
+async function sendOrDownload() {
+  const result = getExportBlob();
+  if (!result) return;
+
+  const { blob, fileName, data } = result;
+  const statusEl = document.getElementById('sendStatus');
+  const btn = document.getElementById('btnSend');
+
+  // Try Web Share API first (mobile — opens native share sheet)
+  if (navigator.canShare) {
+    const file = new File([blob], fileName, {type:'application/json'});
+    if (navigator.canShare({files:[file]})) {
+      try {
+        await navigator.share({
+          files: [file],
+          title: `Odczyty ${data.property} ${data.readingDate}`,
+          text: `Odczyty liczników ${data.property} za ${data.refDate} — wyślij na testsm@fizar.pl`
+        });
+        statusEl.textContent = '✅ Plik udostępniony';
+        statusEl.style.color = 'var(--green)';
+        return;
+      } catch(e) {
+        // User cancelled share — fall through to download
+        if (e.name === 'AbortError') {
+          statusEl.textContent = '';
+          return;
+        }
+      }
+    }
+  }
+
+  // Fallback: download + show email hint
+  downloadJSON();
+  statusEl.innerHTML = '⬇ Pobrano. Wyślij plik na: <strong style="color:var(--text)">testsm@fizar.pl</strong>';
+  statusEl.style.color = 'var(--muted)';
+
+  // Also open mail client with pre-filled subject
+  setTimeout(() => {
+    const subject = encodeURIComponent(`Odczyty ${data.property} ${data.readingDate}`);
+    const body = encodeURIComponent(`Odczyty liczników ${data.property} za ${data.refDate}.\n\nPlik w załączniku: ${fileName}`);
+    window.open(`mailto:testsm@fizar.pl?subject=${subject}&body=${body}`);
+  }, 800);
+}
+window.sendOrDownload = sendOrDownload;
 
 // ── QR Scanner ───────────────────────────────────────────────────────────────
 let qrScanStream = null;
@@ -1127,45 +1178,34 @@ function jumpToMeter(id) {
 }
 window.jumpToMeter = jumpToMeter;
 
-// ── Back button / navigation protection ──────────────────────────────────────
-// beforeunload fires on EVERY navigation attempt reliably.
-// popstate re-push traps Android back button continuously.
-// Session ends ONLY via deliberate menu action.
-
-let sessionGuardActive = false;
-
+// ── Back button protection ───────────────────────────────────────────────────
+// Push a state so we can intercept the back button during an active session
 function activateBackGuard() {
-  sessionGuardActive = true;
-  window.addEventListener('beforeunload', beforeUnloadHandler);
-  // Pre-fill history stack so back button has nowhere to go
-  history.pushState({s:1}, '');
-  history.pushState({s:2}, '');
-  history.pushState({s:3}, '');
-  window.addEventListener('popstate', popStateHandler);
+  history.pushState({sessionActive: true}, '');
+  window.addEventListener('popstate', handleBackButton);
 }
 
-function beforeUnloadHandler(e) {
-  if (!sessionGuardActive) return;
-  e.preventDefault();
-  e.returnValue = '';
-  return '';
-}
+function handleBackButton(e) {
+  const panel = document.getElementById('panel-read');
+  if (!panel.classList.contains('active')) return;
+  // Re-push state so back button keeps being intercepted
+  history.pushState({sessionActive: true}, '');
+  // Show confirmation
+  const done = Object.values(readings).filter(r => !r.skipped && r.current !== null).length;
+  const msg = done > 0
+    ? `Masz ${done} wprowadzonych odczytów.
 
-function popStateHandler() {
-  if (!sessionGuardActive) return;
-  // Continuously re-fill the stack — back button never escapes
-  history.pushState({s:1}, '');
-  history.pushState({s:2}, '');
-  history.pushState({s:3}, '');
-}
+Czy na pewno chcesz opuścić sesję? Niezapisane dane zostaną utracone.
 
-function deactivateBackGuard() {
-  sessionGuardActive = false;
-  window.removeEventListener('beforeunload', beforeUnloadHandler);
-  window.removeEventListener('popstate', popStateHandler);
+Użyj przycisku ··· → Zakończ i pobierz JSON aby zapisać dane.`
+    : `Czy na pewno chcesz opuścić sesję?`;
+  if (confirm(msg)) {
+    // User confirmed exit — remove guard and go back
+    window.removeEventListener('popstate', handleBackButton);
+    history.back();
+  }
 }
 window.activateBackGuard = activateBackGuard;
-window.deactivateBackGuard = deactivateBackGuard;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
