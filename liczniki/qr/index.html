@@ -382,8 +382,8 @@ function fp(prop) {
   const gasBtn = document.getElementById('fu-G');
   gasBtn.style.display = PROPERTY_CONFIG[prop].hasGas ? '' : 'none';
   // Reset utility/building filters
-  activeUtil = 'all';
-  activeBld  = 'all';
+  fU = 'all';
+  fB = 'all';
   document.querySelectorAll('[id^="fu-"]').forEach(b => b.className = 'fb');
   document.getElementById('fu-all').classList.add('on-all');
   document.querySelectorAll('[id^="fb-"]').forEach(b => b.className = 'fb');
@@ -422,7 +422,7 @@ function fb(v) {
   });
   renderGrid();
 }
-window.fu = fu; window.fb = fb;
+window.fu = fu; window.fb = fb; window.fp = fp;
 
 // ── Sticker HTML helper ──
 function stickerContent(m, forPrint) {
