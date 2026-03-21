@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Fizar — Naklejki QR | Licznniki</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
 
@@ -53,6 +54,18 @@
   .fb.on-R     { background:rgba(34,197,94,.15);  color:#22c55e;       border-color:#22c55e; }
   .fb.on-g     { background:rgba(34,197,94,.15);  color:#22c55e;       border-color:#22c55e; }
   .fb.on-prop  { background:rgba(59,130,246,.25); color:#fff;          border-color:var(--accent); font-weight:700; }
+
+  .btn-upload {
+    padding:8px 18px; background:var(--surface2); color:var(--muted);
+    border:1px dashed var(--border); border-radius:7px; font-size:12px;
+    font-weight:600; cursor:pointer; font-family:'IBM Plex Sans',sans-serif;
+    transition:all .2s; display:flex; align-items:center; gap:8px;
+    white-space:nowrap;
+  }
+  .btn-upload:hover { color:var(--text); border-color:var(--accent); }
+  .btn-upload.loaded { border-color:#22c55e; color:#22c55e; border-style:solid; }
+  .btn-upload.error  { border-color:#ef4444; color:#ef4444; border-style:solid; }
+  #fileInput { display:none; }
 
   .btn-print {
     margin-left:auto; padding:10px 24px; background:var(--accent); color:#fff;
@@ -158,6 +171,13 @@
       <button class="fb" id="fb-O" onclick="fb('O')">Biurowy</button>
       <button class="fb" id="fb-R" onclick="fb('R')">Handlowy</button>
     </div>
+    <div class="sep"></div>
+    <button class="btn-upload" id="btnUpload" onclick="document.getElementById('fileInput').click()">
+      📂 Wczytaj Excel
+    </button>
+    <input type="file" id="fileInput" accept=".xlsx,.xlsm,.xlsb"
+           onchange="loadExcel(this)">
+
     <button class="btn-print" onclick="doPrint()">
       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
         <polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/>
@@ -530,6 +550,142 @@ async function doPrint() {
   btn.innerHTML = `<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 01-2-2v-5a2 2 0 012-2h16a2 2 0 012 2v5a2 2 0 01-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg> Drukuj naklejki`;
 }
 window.doPrint = doPrint;
+
+// ── Excel loader ─────────────────────────────────────────────────────────
+// Sheet configs per property — how to read meter IDs
+const EXCEL_CONFIG = {
+  GRUDZ: {
+    sheets: [
+      {name:'Cieplo', idCol:4, u:'C'},  // col E (0-indexed = 4)
+      {name:'Woda',   idCol:4, u:'W'},
+      {name:'Prad',   idCol:4, u:'P'},
+    ],
+    bldCol: 0,   // col A
+    nameCol: 5,  // col F
+    numCol:  6,  // col G
+    flCol:   2,  // col C
+    prCol:   3,  // col D
+    dataRow: 2,  // data starts at row index 2 (row 3 in Excel)
+  },
+  MALBO: {
+    sheets: [
+      {name:'Odczyty', idCol:3, u:null},  // col D; utility auto-detected from ID
+    ],
+    bldCol:  0,
+    nameCol: 4,
+    numCol:  5,
+    flCol:   null,
+    prCol:   1,
+    dataRow: 2,
+  },
+  ZIELON: {
+    sheets: [
+      {name:'Cieplo',       idCol:4, u:'C'},
+      {name:'Prad',         idCol:4, u:'P'},
+      {name:'Woda',         idCol:4, u:'W'},
+    ],
+    bldCol:  0,
+    nameCol: 5,
+    numCol:  6,
+    flCol:   null,
+    prCol:   null,
+    dataRow: 2,
+  },
+};
+
+function detectUtility(id) {
+  if (!id) return 'P';
+  if (id.includes('_G_')) return 'G';
+  if (id.includes('_W_')) return 'W';
+  if (id.includes('_C_')) return 'C';
+  return 'P';
+}
+
+function normalizeBld(raw) {
+  const s = String(raw || '').trim();
+  if (s === 'Biurowy') return 'O';
+  if (s === 'Handlowy' || s === 'CH Unia-Park') return 'R';
+  if (s === '') return 'R';  // GRUDZ empty = Handlowy
+  return s;  // ZIELON: CWW1, CWW2, CWW3, Biurowiec, SP, Shell etc.
+}
+
+async function loadExcel(input) {
+  const file = input.files[0];
+  if (!file) return;
+
+  const btn = document.getElementById('btnUpload');
+  btn.textContent = '⏳ Wczytuję...';
+  btn.className = 'btn-upload';
+
+  try {
+    const buf = await file.arrayBuffer();
+    const wb  = XLSX.read(buf, {type:'array'});
+
+    const prop   = currentProperty;
+    const config = EXCEL_CONFIG[prop];
+    if (!config) throw new Error('Brak konfiguracji dla: ' + prop);
+
+    // Check required sheets exist
+    for (const sc of config.sheets) {
+      if (!wb.SheetNames.includes(sc.name)) {
+        throw new Error(`Brak arkusza "${sc.name}" w pliku`);
+      }
+    }
+
+    const newMeters = [];
+
+    for (const sc of config.sheets) {
+      const ws   = wb.Sheets[sc.name];
+      const rows = XLSX.utils.sheet_to_json(ws, {header:1, defval:null});
+
+      for (let i = config.dataRow; i < rows.length; i++) {
+        const row = rows[i];
+        const mid = row[sc.idCol];
+        if (!mid || !String(mid).startsWith('LICZ_')) continue;
+
+        const u    = sc.u || detectUtility(String(mid));
+        const bld  = config.bldCol  !== null ? normalizeBld(row[config.bldCol])  : 'R';
+        const name = config.nameCol !== null ? String(row[config.nameCol] || '') : '';
+        const num  = config.numCol  !== null ? String(row[config.numCol]  || '') : '';
+        const fl   = config.flCol   !== null ? (row[config.flCol] !== null ? String(row[config.flCol]) : null) : null;
+        const pr   = config.prCol   !== null ? (row[config.prCol] !== null ? String(row[config.prCol]) : null) : null;
+
+        newMeters.push({id:String(mid), name, num, u, bld, fl, pr});
+      }
+    }
+
+    if (!newMeters.length) throw new Error('Nie znaleziono licznikow w pliku');
+
+    // Update the property meter list
+    PROPERTY_CONFIG[prop].meters = newMeters;
+    METERS = newMeters;
+
+    // Show Gas button if needed
+    const hasGas = newMeters.some(m => m.u === 'G');
+    PROPERTY_CONFIG[prop].hasGas = hasGas;
+    document.getElementById('fu-G').style.display = hasGas ? '' : 'none';
+
+    btn.textContent = `✅ ${file.name} (${newMeters.length} liczników)`;
+    btn.className = 'btn-upload loaded';
+
+    // Reset filters and render
+    fU = 'all'; fB = 'all';
+    document.querySelectorAll('[id^="fu-"]').forEach(b => b.className = 'fb');
+    document.getElementById('fu-all').className = 'fb on-all';
+    document.querySelectorAll('[id^="fb-"]').forEach(b => b.className = 'fb');
+    document.getElementById('fb-all').className = 'fb on-all';
+    renderGrid();
+
+  } catch(err) {
+    btn.textContent = '❌ ' + err.message;
+    btn.className = 'btn-upload error';
+    console.error(err);
+  }
+
+  // Reset file input so same file can be re-loaded
+  input.value = '';
+}
+window.loadExcel = loadExcel;
 
 // Init
 document.addEventListener('DOMContentLoaded', () => {
