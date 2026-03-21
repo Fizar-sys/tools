@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fizar — Naklejki QR | Grudziądz</title>
+<title>Fizar — Naklejki QR | Licznniki</title>
 <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
@@ -82,6 +82,7 @@
   .c-util.C { background:#fee2e2; color:#991b1b; }
   .c-util.W { background:#cffafe; color:#0e7490; }
   .c-util.P { background:#fef3c7; color:#92400e; }
+  .c-util.G { background:#dcfce7; color:#166534; }
   .c-bldg  { font-size:8px; color:#999; text-transform:uppercase; letter-spacing:.6px; font-weight:500; }
   .c-name  { font-size:11px; font-weight:700; color:#000; text-align:center; line-height:1.3; margin-top:2px; }
   .c-loc   { font-size:8px; color:#aaa; text-align:center; }
@@ -125,13 +126,20 @@
 <header>
   <div class="logo">FIZAR<span>.qr</span></div>
   <div style="width:1px;height:24px;background:var(--border)"></div>
-  <span style="font-size:13px;color:var(--muted)">Generator Naklejek QR — Grudziądz · Unia Park Retail</span>
+  <span style="font-size:13px;color:var(--muted)" id="headerDesc">Generator Naklejek QR — Liczniki</span>
 </header>
 
 <main>
   <div class="toolbar">
+    <span class="toolbar-title">Nieruchomość:</span>
+    <div class="filter-group">
+      <button class="fb on-all" id="fp-GRUDZ"  onclick="fp('GRUDZ')">GRUDZ</button>
+      <button class="fb"         id="fp-MALBO"  onclick="fp('MALBO')">MALBO</button>
+      <button class="fb"         id="fp-ZIELON" onclick="fp('ZIELON')">ZIELON</button>
+    </div>
+    <div class="sep"></div>
     <span class="toolbar-title">Liczniki</span>
-    <span class="count" id="cnt">80</span>
+    <span class="count" id="cnt"></span>
     <div class="sep"></div>
     <div class="filter-group">
       <span class="filter-label">Medium:</span>
@@ -139,6 +147,7 @@
       <button class="fb" id="fu-C" onclick="fu('C')">🔴 Ciepło</button>
       <button class="fb" id="fu-W" onclick="fu('W')">🔵 Woda</button>
       <button class="fb" id="fu-P" onclick="fu('P')">🟡 Prąd</button>
+      <button class="fb" id="fu-G" onclick="fu('G')" style="display:none">🟢 Gaz</button>
     </div>
     <div class="sep"></div>
     <div class="filter-group">
@@ -163,7 +172,109 @@
 <div id="psheet"></div>
 
 <script>
-const METERS = [
+const METERS_MALBO = [
+  {id:"LICZ_G_MALBO", name:"Gaz-glowny", num:"392050", u:"G", bld:"MALBO", fl:null, pr:null},
+  {id:"LICZ_P_MALBO", name:"Prad-glowny", num:"42993585", u:"P", bld:"MALBO", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-~1-H0001", name:"EXATEL", num:"3275772", u:"P", bld:"MALBO_R-~1-H0001", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-~1-H0002", name:"JYSK (magazyn w parkingu)", num:"10040416", u:"P", bld:"MALBO_R-~1-H0002", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-~1-RKOT", name:"Podlicznik Kotlowni", num:"K 01", u:"P", bld:"MALBO_R-~1-RKOT", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-~1-RWINT", name:"Podlicznik Windy Towarowey", num:"K 02", u:"P", bld:"MALBO_R-~1-RWINT", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-0-H0001", name:"ACTION (licznik lokalu)", num:"SGS0446", u:"P", bld:"MALBO_R-0-H0001", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-0-H0002", name:"SANTANDER BANK", num:"3701567", u:"P", bld:"MALBO_R-0-H0002", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-0-H03-4", name:"moeller", num:"293350", u:"P", bld:"MALBO_R-0-H03-4", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-0-H0005", name:"DEM", num:"1049438", u:"P", bld:"MALBO_R-0-H0005", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-0-RSHR", name:"Podlicznik Shody Ruchome", num:"K 03", u:"P", bld:"MALBO_R-0-RSHR", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-H0201", name:"BEMKO", num:"BM 03B-L", u:"P", bld:"MALBO_R-1-H0201", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-H0202", name:"JYSK", num:"LE-02dCT", u:"P", bld:"MALBO_R-1-H0202", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-RWENT1", name:"BEMKO", num:"BM-030-L1", u:"P", bld:"MALBO_R-1-RWENT1", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-RWENT2", name:"BEMKO", num:"BM-030-L3", u:"P", bld:"MALBO_R-1-RWENT2", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-RWENT3", name:"BEMKO", num:"BM-030-L2", u:"P", bld:"MALBO_R-1-RWENT3", fl:null, pr:null},
+  {id:"LICZ_P_MALBO_R-1-RWENT4", name:"Dff", num:"LE-02d CT", u:"P", bld:"MALBO_R-1-RWENT4", fl:null, pr:null},
+  {id:"LICZ_W_MALBO", name:"Wody - glowny Wartości czerwone podlegają weryfikacji", num:"200305151222", u:"W", bld:"MALBO", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-0-H0001", name:"ACTION", num:"2857847", u:"W", bld:"MALBO_R-0-H0001", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-0-H0002", name:"SANTANDER BANK", num:"4995512", u:"W", bld:"MALBO_R-0-H0002", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-0-H03-4", name:"inena", num:"1220217676", u:"W", bld:"MALBO_R-0-H03-4", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-1-H0201", name:"TERG", num:"1220439451", u:"W", bld:"MALBO_R-1-H0201", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-1-H0202_1", name:"Wody 1", num:"1220101319", u:"W", bld:"MALBO_R-1-H0202", fl:null, pr:null},
+  {id:"LICZ_W_MALBO_R-1-H0202_2", name:"Wody 2", num:"1220101322", u:"W", bld:"MALBO_R-1-H0202", fl:null, pr:null},
+];
+
+const METERS_ZIELON = [
+  {id:"LICZ_C_ZIELON_CWWI", name:"CWW1 Glowny", num:"", u:"C", bld:"CWW1", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWII", name:"CWW2 Glowny", num:"", u:"C", bld:"CWW2", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWII-0-H0001", name:"Biedronka", num:"", u:"C", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWII-0-H0002", name:"Pepco", num:"", u:"C", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWII-0-H03/4_1", name:"Derby Jeans_1", num:"", u:"C", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWII-0-H03/4_2", name:"", num:"", u:"C", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_SP-0-H0001U", name:"Shell", num:"", u:"C", bld:"SP", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_CWWIII", name:"CWW3 Glowny", num:"", u:"C", bld:"CWW3", fl:null, pr:null},
+  {id:"LICZ_C_ZIELON_O", name:"Biurowiec Glowny", num:"", u:"C", bld:"Biurowiec", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-D", name:"CWWI-PPE1 Dzien", num:"10919.551", u:"P", bld:"CWW1", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-N", name:"CWWI-PPE1 Noc", num:"4092.468", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0001B", name:"SENPO I", num:"63.02", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0002WENT", name:"ABRA-wentylacja", num:"146.15", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0003WENT", name:"Komfort-wentylacja", num:"561.33", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0004WENT", name:"Jysk - wentylacja -brak rozliczeń wliczone w czynsz", num:"444.49", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0005WENT", name:"VOX-wentylacja", num:"99.421", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0006", name:"Gastronomia Wiater", num:"357.64", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0007", name:"SENPO II", num:"66.77", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0008", name:"Studio Kuchnie", num:"256.88", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-RECWENZI", name:"Elektropciepłownia węzeł 1", num:"284.13", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-RWENTH", name:"Klima Hall", num:"332.11", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_P", name:"Oświetlenie parkingu", num:"384087", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-RAGRCHL", name:"Woda lodowa", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_P-0-C0015", name:"Stoisko z lodami", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWI-0-RNW", name:"Glowna rozdielnia", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-D", name:"CWWII-PPE2 Dzien", num:"35637.185", u:"P", bld:"CWW2", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-N", name:"CWWII-PPE2 Noc", num:"13322.003", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-H0001", name:"Sublicznik przez JMP no. CO01050", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-H0002", name:"Pepco", num:"638831", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_1", name:"Derby Jeans 1", num:"277747", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_2", name:"Derby Jeans 2", num:"113958", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_3", name:"", num:"78836", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-RECWENZII", name:"Elektrociepłownia - węzeł 2", num:"9225", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWII-0-SUB2", name:"Sublicznik przez inne najemcy no. CO01033", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-D", name:"CWWIII-PPE3 Dzien", num:"10653.684", u:"P", bld:"CWW3", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-N", name:"CWWIII-PPE3 Noc", num:"1545.924", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0001", name:"Media Expert", num:"1689116", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0002", name:"Action", num:"207479", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0003", name:"Dekoral", num:"106812", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-0-M0001", name:"Cykero", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_CWWIII-0-M0002", name:"Jysk-magazyn", num:"25231", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O-D", name:"Buirowca-PPE4 Dzien", num:"11787.074", u:"P", bld:"Biurowiec", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O-N", name:"Buirowca-PPE4 Noc", num:"5926.493", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O-~1-B0001", name:"Netia", num:"221238", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O-0-H05-7", name:"U Stodolnych", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_P-0-C0017", name:"Inpost -podlicznik Netii", num:"14447", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O_AMW1", name:"liczniki AMW1", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O_AMW2", name:"liczniki AMW2", num:"", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_O-~1", name:"Biurowiec - główny podlicznik", num:"421948", u:"P", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_P_ZIELON_SP-0-H0001U", name:"Shell", num:"2807893", u:"P", bld:"Shell", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_D", name:"Glowny Duzy", num:"", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_M", name:"Glowny Maly", num:"", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0002", name:"ABRA", num:"218", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0003", name:"Komfort", num:"315", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0004", name:"Jysk - brak rozliczeń/wliczone w czynsz", num:"442", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0005", name:"VOX", num:"193", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0006", name:"Gastronomia Wiater", num:"2895", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWI", name:"Woda/CWW1", num:"19700", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0001", name:"Biedronka", num:"451", u:"W", bld:"CWW2", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWII-0-H03/4", name:"Derby Jeans 1", num:"319", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0002_1", name:"Pepco 1", num:"52", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0002_2", name:"Pepco 2", num:"115", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0004", name:"Vacant", num:"", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0001", name:"Media Expert", num:"763", u:"W", bld:"CWW3", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0002", name:"Action", num:"301", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0003", name:"Dekoral", num:"200", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWIII-0-M0001", name:"CYKERO", num:"", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_O", name:"podlicznik Bjurowca", num:"3396", u:"W", bld:"Biurowiec", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_O-~1-AMW", name:"AMW - budynek Zjednoczenia 104", num:"1471", u:"W", bld:"CWW", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_SP-0-H0001U", name:"Shell", num:"757", u:"W", bld:"Shell", fl:null, pr:null},
+  {id:"LICZ_W_ZIELON_CWWIII-0-RHYDRA", name:"Hydranty zewnętrzne CWW3", num:"", u:"W", bld:"CWW", fl:null, pr:null},
+];
+
+// Grudziądz
+const METERS_GRUDZ = [
   {id:"LICZ_C_GRUDZ_O",         name:"Ciepło b.biurowy/budynek",         num:"4103826/2001",         u:"C",bld:"O",fl:null,pr:null},
   {id:"LICZ_C_GRUDZ_O-0-B0002", name:"Ciepło b.biurowy/KIK",             num:"4103827/2001",         u:"C",bld:"O",fl:"0",  pr:"B0002"},
   {id:"LICZ_C_GRUDZ_R_1",       name:"Ciepło/budynek C.O.",              num:"55612592/2016",        u:"C",bld:"R",fl:null,pr:null},
@@ -246,6 +357,43 @@ const METERS = [
   {id:"LICZ_P_GRUDZ_R-0-SU015", name:"En.el./PKO BP",                   num:"10833",                u:"P",bld:"R",fl:"0",  pr:"SU015"},
 ];
 
+// ── Property registry ────────────────────────────────────────────────────
+const PROPERTY_CONFIG = {
+  GRUDZ:  { name: 'Grudziądz — Unia Park Retail',  meters: null, hasGas: false },
+  MALBO:  { name: 'Malbork — CH Zawisza',          meters: null, hasGas: true  },
+  ZIELON: { name: 'Zielona Góra — CWW',            meters: null, hasGas: false },
+};
+PROPERTY_CONFIG.GRUDZ.meters  = METERS_GRUDZ;
+PROPERTY_CONFIG.MALBO.meters  = METERS_MALBO;
+PROPERTY_CONFIG.ZIELON.meters = METERS_ZIELON;
+METERS = METERS_GRUDZ; // default
+// Assigned after arrays defined (below)
+
+let currentProperty = 'GRUDZ';
+let METERS = [];  // active meter list
+
+function fp(prop) {
+  currentProperty = prop;
+  METERS = PROPERTY_CONFIG[prop].meters;
+  // Update property buttons
+  document.querySelectorAll('[id^="fp-"]').forEach(b => b.className = 'fb');
+  document.getElementById('fp-' + prop).classList.add('on-all');
+  // Show/hide Gas button
+  const gasBtn = document.getElementById('fu-G');
+  gasBtn.style.display = PROPERTY_CONFIG[prop].hasGas ? '' : 'none';
+  // Reset utility/building filters
+  activeUtil = 'all';
+  activeBld  = 'all';
+  document.querySelectorAll('[id^="fu-"]').forEach(b => b.className = 'fb');
+  document.getElementById('fu-all').classList.add('on-all');
+  document.querySelectorAll('[id^="fb-"]').forEach(b => b.className = 'fb');
+  document.getElementById('fb-all').classList.add('on-all');
+  // Update header
+  document.getElementById('headerDesc').textContent =
+    'Generator Naklejek QR — ' + PROPERTY_CONFIG[prop].name;
+  renderGrid();
+}
+
 const BLDG_LABEL = {O:'Biurowy', R:'Handlowy', X:'Wspólny'};
 
 let fU = 'all', fB = 'all';
@@ -260,9 +408,9 @@ function filtered() {
 // Filter button helpers
 function fu(v) {
   fU = v;
-  ['all','C','W','P'].forEach(k => {
+  ['all','C','W','P','G'].forEach(k => {
     const btn = document.getElementById('fu-'+k);
-    btn.className = 'fb' + (k===v ? ' on-'+v : '');
+    if (btn) btn.className = 'fb' + (k===v ? ' on-'+v.toLowerCase() : '');
   });
   renderGrid();
 }
