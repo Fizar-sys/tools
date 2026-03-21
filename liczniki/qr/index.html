@@ -385,14 +385,16 @@ const PROPERTY_CONFIG = {
   MALBO:  { name: 'Malbork — CH Zawisza',          meters: null, hasGas: true  },
   ZIELON: { name: 'Zielona Góra — CWW',            meters: null, hasGas: false },
 };
+
+// ── Variable declarations first ───────────────────────────────────────────
+let currentProperty = 'GRUDZ';
+let METERS = [];
+
+// ── Assign meter arrays after declarations ────────────────────────────────
 PROPERTY_CONFIG.GRUDZ.meters  = METERS_GRUDZ;
 PROPERTY_CONFIG.MALBO.meters  = METERS_MALBO;
 PROPERTY_CONFIG.ZIELON.meters = METERS_ZIELON;
-METERS = METERS_GRUDZ; // default
-// Assigned after arrays defined (below)
-
-let currentProperty = 'GRUDZ';
-let METERS = [];  // active meter list
+METERS = METERS_GRUDZ;
 
 function fp(prop) {
   currentProperty = prop;
