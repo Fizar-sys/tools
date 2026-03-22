@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>Fizar — Odczyty | Grudziądz</title>
+<title>Fizar — Odczyty Liczników</title>
 <!-- Tesseract.js for offline OCR -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.0.4/dist/tesseract.min.js"></script>
 <!-- QR scanner -->
@@ -38,6 +38,15 @@
   .panel.active { display:block; }
 
   /* ── Setup panel ── */
+  .btn-prop {
+    padding:12px 8px; border-radius:8px; border:2px solid var(--border);
+    background:var(--surface2); color:var(--muted); cursor:pointer;
+    font-family:inherit; display:flex; flex-direction:column;
+    align-items:center; gap:4px; transition:all .15s; width:100%;
+  }
+  .btn-prop:hover { border-color:var(--accent); color:var(--text); }
+  .btn-prop.selected { border-color:var(--accent); background:rgba(59,130,246,.15); color:var(--accent); }
+
   #panel-setup { max-width:520px; margin:40px auto; padding:0 20px; }
   .setup-card { background:var(--surface); border:1px solid var(--border); border-radius:12px; padding:28px; margin-bottom:16px; }
   .setup-card h2 { font-size:17px; font-weight:500; margin-bottom:6px; }
@@ -211,6 +220,28 @@
   <div id="setup-inner" style="max-width:520px;margin:40px auto;padding:0 20px">
 
     <div class="setup-card">
+      <h2>0. Wybierz nieruchomość</h2>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-top:8px">
+        <button class="btn-prop" id="btn-GRUDZ"  onclick="selectProperty('GRUDZ')">
+          <div style="font-size:18px">🏢</div>
+          <div style="font-size:11px;font-weight:600">GRUDZ</div>
+          <div style="font-size:10px;opacity:.6">Grudziądz</div>
+        </button>
+        <button class="btn-prop" id="btn-MALBO"  onclick="selectProperty('MALBO')">
+          <div style="font-size:18px">🏪</div>
+          <div style="font-size:11px;font-weight:600">MALBO</div>
+          <div style="font-size:10px;opacity:.6">Malbork</div>
+        </button>
+        <button class="btn-prop" id="btn-ZIELON" onclick="selectProperty('ZIELON')">
+          <div style="font-size:18px">🏬</div>
+          <div style="font-size:11px;font-weight:600">ZIELON</div>
+          <div style="font-size:10px;opacity:.6">Zielona Góra</div>
+        </button>
+      </div>
+      <div id="propStatus" style="font-size:12px;color:var(--muted);margin-top:8px;min-height:16px"></div>
+    </div>
+
+    <div class="setup-card">
       <h2>1. Wczytaj poprzednie odczyty</h2>
       <p>Zeskanuj kod QR z arkusza <strong>QR_Odczyty</strong> w pliku Excel — lub wgraj plik Excel bezpośrednio.</p>
 
@@ -378,88 +409,197 @@
 
 <script>
 // ── State ─────────────────────────────────────────────────────────────────
-const METERS = [
-  {id:"LICZ_C_GRUDZ_O",          name:"Ciepło b.biurowy/budynek",         u:"C",bld:"O",fl:null,pr:null,unit:"GJ"},
-  {id:"LICZ_C_GRUDZ_O-0-B0002",  name:"Ciepło b.biurowy/KIK",            u:"C",bld:"O",fl:"0",  pr:"B0002",unit:"GJ"},
-  {id:"LICZ_C_GRUDZ_R_1",        name:"Ciepło/budynek C.O.",             u:"C",bld:"R",fl:null,pr:null,unit:"GJ"},
-  {id:"LICZ_C_GRUDZ_R_2",        name:"Ciepło/budynek WE",               u:"C",bld:"R",fl:null,pr:null,unit:"GJ"},
-  {id:"LICZ_C_GRUDZ_R-0-SU001_1",name:"Ciepło/Hildebrandt CO",          u:"C",bld:"R",fl:"0",  pr:"SU001_1",unit:"GJ"},
-  {id:"LICZ_C_GRUDZ_R-0-SU001_2",name:"Ciepło/Hildebrandt WE",          u:"C",bld:"R",fl:"0",  pr:"SU001_2",unit:"GJ"},
-  {id:"LICZ_W_GRUDZ",            name:"Woda/UniaPark główny",            u:"W",bld:"X",fl:null,pr:null,unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O",          name:"Woda/budynek główny biurowy",     u:"W",bld:"O",fl:null,pr:null,unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-0-B0002",  name:"Woda/KIK",                       u:"W",bld:"O",fl:"0",  pr:"B0002",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-1-B0003_1",name:"Woda_1/Edicon",                  u:"W",bld:"O",fl:"1",  pr:"B0003_1",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-1-B0003_2",name:"Woda_2/Edicon",                  u:"W",bld:"O",fl:"1",  pr:"B0003_2",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B003A",  name:"Woda/Strefa Uroda",              u:"W",bld:"O",fl:"2",  pr:"B003A",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B0004",  name:"Woda/Agnieszka Gruca",           u:"W",bld:"O",fl:"2",  pr:"B0004",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B0006",  name:"Woda/Sklepy Komfort",            u:"W",bld:"O",fl:"2",  pr:"B0006",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B0015B", name:"Woda/TEB",                       u:"W",bld:"O",fl:"2",  pr:"B0015B",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B0016",  name:"Woda/Esthetic Dental",           u:"W",bld:"O",fl:"2",  pr:"B0016",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-2-B0019",  name:"Woda/Klinika Ust",               u:"W",bld:"O",fl:"2",  pr:"B0019",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_O-3-B0001",  name:"Woda/PPL Tomasz Żary",           u:"W",bld:"O",fl:"3",  pr:"B0001",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU001",  name:"Woda/Hildebrandt",               u:"W",bld:"R",fl:"0",  pr:"SU001",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU002",  name:"Woda/vacant",                    u:"W",bld:"R",fl:"0",  pr:"SU002",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU003-4",name:"Woda/Euro-Net",                  u:"W",bld:"R",fl:"0",  pr:"SU003-4",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU005",  name:"Woda/Rossmann",                  u:"W",bld:"R",fl:"0",  pr:"SU005",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU006",  name:"Woda/Gold Investments",          u:"W",bld:"R",fl:"0",  pr:"SU006",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU007",  name:"Woda/Cefarm",                    u:"W",bld:"R",fl:"0",  pr:"SU007",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU010",  name:"Woda/Kwiaciarnia Anna",          u:"W",bld:"R",fl:"0",  pr:"SU010",unit:"m³"},
-  {id:"LICZ_W_GRUDZ_R-0-SU013",  name:"Woda/MaxiZoo",                   u:"W",bld:"R",fl:"0",  pr:"SU013",unit:"m³"},
-  {id:"LICZ_P_GRUDZ_O_Pod",      name:"En.el.podstawa/budynek",         u:"P",bld:"O",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O_Rez",      name:"En.el.rezerwa/budynek",          u:"P",bld:"O",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-0-B0002",  name:"En.el./KIK",                     u:"P",bld:"O",fl:"0",  pr:"B0002",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0001",  name:"En.el./administracja FIZAR",     u:"P",bld:"O",fl:"2",  pr:"B0001",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B002A/B002B",name:"En.el./PUM Cybak Adamaszek", u:"P",bld:"O",fl:"2",  pr:"B002A/B002B",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B003A",  name:"En.el./Strefa Uroda",            u:"P",bld:"O",fl:"2",  pr:"B003A",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B003B",  name:"En.el./ISPL Małgorzata Drozd",  u:"P",bld:"O",fl:"2",  pr:"B003B",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0004",  name:"En.el./Agnieszka Gruca",        u:"P",bld:"O",fl:"2",  pr:"B0004",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0005",  name:"En.el./vacant",                  u:"P",bld:"O",fl:"2",  pr:"B0005",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0006",  name:"En.el./Sklepy Komfort",          u:"P",bld:"O",fl:"2",  pr:"B0006",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0007",  name:"En.el./Multimedia",              u:"P",bld:"O",fl:"2",  pr:"B0007",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0008_1",name:"En.el./Multimedia",             u:"P",bld:"O",fl:"2",  pr:"B0008_1",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0008_2",name:"En.el./Multimedia",             u:"P",bld:"O",fl:"2",  pr:"B0008_2",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0009",  name:"En.el./Multimedia",              u:"P",bld:"O",fl:"2",  pr:"B0009",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0010",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0010",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0011",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0011",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0012",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0012",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0013",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0013",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0014",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0014",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0015",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"2",  pr:"B0015",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0016",  name:"En.el./Esthetic Dental",         u:"P",bld:"O",fl:"2",  pr:"B0016",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0017/B0018",name:"En.el./Esthetic Dental",    u:"P",bld:"O",fl:"2",  pr:"B0017/B0018",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-2-B0019",  name:"En.el./vacant",                  u:"P",bld:"O",fl:"2",  pr:"B0019",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0001",  name:"En.el./PPL Tomasz Żary",         u:"P",bld:"O",fl:"3",  pr:"B0001",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0002",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0002",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0004",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0004",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0005",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0005",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0006",  name:"En.el./AMI Bogumiła Kranc",      u:"P",bld:"O",fl:"3",  pr:"B0006",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0007",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0007",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0008",  name:"En.el./Pink Flat",               u:"P",bld:"O",fl:"3",  pr:"B0008",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0009",  name:"En.el./Grupa Wena",              u:"P",bld:"O",fl:"3",  pr:"B0009",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_O-3-B0010",  name:"En.el./TEB",                     u:"P",bld:"O",fl:"3",  pr:"B0010",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R_Pod",      name:"En.el.podstawa/budynek R",       u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R_Rez",      name:"En.el.rezerwa/budynek R",        u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R_RAGRCHL",  name:"En.el.Woda lodowa/budynek",      u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R_RWENT",    name:"En.el.Wentylacja/budynek",       u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R_RKLIMAH",  name:"En.el.Klimakonwektory/pasaż",    u:"P",bld:"R",fl:null,pr:null,unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU001_1",name:"En.el./Hildebrandt",            u:"P",bld:"R",fl:"0",  pr:"SU001_1",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU001_2",name:"En.el.Wentylacja/Hildebrandt",  u:"P",bld:"R",fl:"0",  pr:"SU001_2",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU001_3",name:"En.el.Woda lod./Hildebrandt",   u:"P",bld:"R",fl:"0",  pr:"SU001_3",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU002",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU002",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU003-4",name:"En.el./Euro-Net",               u:"P",bld:"R",fl:"0",  pr:"SU003-4",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU005",  name:"En.el./Rossmann",                u:"P",bld:"R",fl:"0",  pr:"SU005",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU006",  name:"En.el./Gold Investments",        u:"P",bld:"R",fl:"0",  pr:"SU006",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU007",  name:"En.el./Cefarm",                  u:"P",bld:"R",fl:"0",  pr:"SU007",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU008",  name:"En.el./NorthPress",              u:"P",bld:"R",fl:"0",  pr:"SU008",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU009",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU009",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU010",  name:"En.el./Kwiaciarnia Anna",        u:"P",bld:"R",fl:"0",  pr:"SU010",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU011",  name:"En.el./MBM",                     u:"P",bld:"R",fl:"0",  pr:"SU011",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU012",  name:"En.el./vacant",                  u:"P",bld:"R",fl:"0",  pr:"SU012",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU013_1",name:"En.el./MaxiZoo",                u:"P",bld:"R",fl:"0",  pr:"SU013_1",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU013_2",name:"En.el.Wentylacja/MaxiZoo",      u:"P",bld:"R",fl:"0",  pr:"SU013_2",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU014",  name:"En.el./MBM",                     u:"P",bld:"R",fl:"0",  pr:"SU014",unit:"kWh"},
-  {id:"LICZ_P_GRUDZ_R-0-SU015",  name:"En.el./PKO BP",                  u:"P",bld:"R",fl:"0",  pr:"SU015",unit:"kWh"},
-];
+const METERS_DATA = {
+  GRUDZ: [
+  {id:"LICZ_C_GRUDZ_O",name:"Ciepło b.biurowy/budynek",num:"4103826/2001",u:"C",bld:"Biurowy",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_O-0-B0002",name:"Cieplo b.biurowy/KIK - umowa rozliczenia 100%",num:"4103827/2001",u:"C",bld:"Biurowy",fl:"0",pr:"B0002",unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R_1",name:"Ciepło/budynek C.O.",num:"55612592/2016",u:"C",bld:"Handlowy",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R_2",name:"Ciepło/budynek WE",num:"6108991/2007",u:"C",bld:"Handlowy",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_1",name:"Ciepło/Hildebrandt CO",num:"36025853",u:"C",bld:"Handlowy",fl:"0",pr:"SU001_1",unit:"GJ"},
+  {id:"LICZ_C_GRUDZ_R-0-SU001_2",name:"Ciepło/Hildebrandt WE",num:"41858194",u:"C",bld:"Handlowy",fl:"0",pr:"SU001_2",unit:"GJ"},
+  {id:"LICZ_W_GRUDZ",name:"Woda/UniaPark (główny)",num:"13966 1;C13JH000483",u:"W",bld:null,fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O",name:"Wodab.b. główny",num:"6252922",u:"W",bld:"Biurowy",fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-0-B0002",name:"Woda/KIK",num:"3493531",u:"W",bld:"Biurowy",fl:"0",pr:"B0002",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_1",name:"Woda_1/Edicon",num:"3443835",u:"W",bld:"Biurowy",fl:"1",pr:"B0003_1",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-1-B0003_2",name:"Woda_2/Edicon",num:"3443720",u:"W",bld:"Biurowy",fl:"1",pr:"B0003_2",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B003A",name:"Woda/Strefa Uroda",num:"7295376",u:"W",bld:"Biurowy",fl:"2",pr:"B003A",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0004",name:"Woda/A.Gruca",num:"7395378",u:"W",bld:"Biurowy",fl:"2",pr:"B0004",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0006",name:"Woda/Komfort",num:"3491564",u:"W",bld:"Biurowy",fl:"2",pr:"B0006",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0015B",name:"Woda/TEB",num:"669656/09",u:"W",bld:"Biurowy",fl:"2",pr:"B0015B",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0016",name:"Woda/M.Szelążek",num:"2022.0129281",u:"W",bld:"Biurowy",fl:"2",pr:"B0016",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-2-B0019",name:"Woda/Klinika Ust",num:"2023.0121205",u:"W",bld:"Biurowy",fl:"2",pr:"B0019",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_O-3-B0001",name:"Woda/T.Żary",num:"33800500",u:"W",bld:"Biurowy",fl:"3",pr:"B0001",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU001",name:"Woda/Hildebrandt",num:"526680-10",u:"W",bld:"Handlowy",fl:"0",pr:"SU001",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU002",name:"Woda/vacant",num:"305135/09",u:"W",bld:"Handlowy",fl:"0",pr:"SU002",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU003-4",name:"Woda/Euro-Net",num:"8866665",u:"W",bld:"Handlowy",fl:"0",pr:"SU003-4",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU005",name:"Woda/Rossmann",num:"9265688",u:"W",bld:"Handlowy",fl:"0",pr:"SU005",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU006",name:"Woda/Gold Inv.",num:"9080016",u:"W",bld:"Handlowy",fl:"0",pr:"SU006",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU007",name:"Woda/Cefarm",num:"80556411",u:"W",bld:"Handlowy",fl:"0",pr:"SU007",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU010",name:"Woda/Kwiaciarnia",num:"9089440",u:"W",bld:"Handlowy",fl:"0",pr:"SU010",unit:"m³"},
+  {id:"LICZ_W_GRUDZ_R-0-SU013",name:"Woda/MaxiZoo",num:"838516/09",u:"W",bld:"Handlowy",fl:"0",pr:"SU013",unit:"m³"},
+  {id:"LICZ_P_GRUDZ_O_Pod",name:"En.el.podstawa/budynek",num:"96250378",u:"P",bld:"Biurowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O_Rez",name:"En.el.rezerwa/budynek",num:"96636295",u:"P",bld:"Biurowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-0-B0002",name:"En.el./KIK",num:"96249888",u:"P",bld:"Biurowy",fl:"0",pr:"B0002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0001",name:"En.el./FIZAR",num:"73527176456",u:"P",bld:"Biurowy",fl:"2",pr:"B0001",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B002A/B002B",name:"En.el./M.Rębisz",num:"73527176464000",u:"P",bld:"Biurowy",fl:"2",pr:"B002A/B002B",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B003A",name:"En.el./Strefa Uroda",num:"9493121-1995",u:"P",bld:"Biurowy",fl:"2",pr:"B003A",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B003B",name:"En.el./M.Drozd",num:"",u:"P",bld:"Biurowy",fl:"2",pr:"B003B",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0004",name:"En.el./A.Gruca",num:"6846176",u:"P",bld:"Biurowy",fl:"2",pr:"B0004",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0005",name:"En.el./vacant",num:"00735-27200132-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0006",name:"En.el./Komfort",num:"00735-27199191-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0007",name:"En.el./Vectra",num:"00735-27199518-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_1",name:"En.el./Vectra",num:"15141210",u:"P",bld:"Biurowy",fl:"2",pr:"B0008_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0008_2",name:"En.el./Vectra",num:"01085-1301-1252-04",u:"P",bld:"Biurowy",fl:"2",pr:"B0008_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0009",name:"En.el./Vectra",num:"14795413",u:"P",bld:"Biurowy",fl:"2",pr:"B0009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0010",name:"En.el./TEB",num:"14355262",u:"P",bld:"Biurowy",fl:"2",pr:"B0010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0011",name:"En.el./TEB",num:"13773645",u:"P",bld:"Biurowy",fl:"2",pr:"B0011",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0012",name:"En.el./TEB",num:"00735-27199952-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0012",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0013",name:"En.el./TEB",num:"00735-27199735-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0013",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0014",name:"En.el./TEB",num:"00735-27199520-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0014",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0015",name:"En.el./TEB",num:"1435106",u:"P",bld:"Biurowy",fl:"2",pr:"B0015",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0016",name:"En.el./M.Szelążek",num:"00735-27199758",u:"P",bld:"Biurowy",fl:"2",pr:"B0016",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0017/B0018",name:"En.el./M.Szelążek",num:"00735-27200119-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0017/B0018",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-2-B0019",name:"En.el./KLINIKA UST",num:"00735-27199936-00-0",u:"P",bld:"Biurowy",fl:"2",pr:"B0019",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0001",name:"En.el./T.Żary",num:"00735-27161870-00-0",u:"P",bld:"Biurowy",fl:"3",pr:"B0001",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0002",name:"En.el./TEB",num:"14352305",u:"P",bld:"Biurowy",fl:"3",pr:"B0002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0004",name:"En.el./TEB",num:"00735-27161857-00-0",u:"P",bld:"Biurowy",fl:"3",pr:"B0004",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0005",name:"En.el./TEB",num:"00735-27168037-00-0",u:"P",bld:"Biurowy",fl:"3",pr:"B0005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0006",name:"En.el./TEB",num:"12369605",u:"P",bld:"Biurowy",fl:"3",pr:"B0006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0007",name:"En.el./TEB",num:"00735-27199183-00-0",u:"P",bld:"Biurowy",fl:"3",pr:"B0007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0008",name:"En.el./TEB",num:"00735-27199184-00-0 ",u:"P",bld:"Biurowy",fl:"3",pr:"B0008",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0009",name:"En.el./Wena",num:"00735-27494959-00-0",u:"P",bld:"Biurowy",fl:"3",pr:"B0009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_O-3-B0010",name:"En.el./TEB",num:"13774915",u:"P",bld:"Biurowy",fl:"3",pr:"B0010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_Pod",name:"En.el.podstawa/budynek",num:"58003566",u:"P",bld:"Handlowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_Rez",name:"En.el.rezerwa/budynek",num:"94267032",u:"P",bld:"Handlowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RAGRCHL",name:"Woda lod./b.handlowy",num:"B00022",u:"P",bld:"Handlowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RWENT",name:"Went/b.handlowy",num:"11960",u:"P",bld:"Handlowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R_RKLIMAH",name:"Klimakw/pasaż",num:"IEC61036",u:"P",bld:"Handlowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_1",name:"En.el./Hildebrandt",num:"IEC62052-11",u:"P",bld:"Handlowy",fl:"0",pr:"SU001_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_2",name:"Went/Hildebrandt",num:"10829",u:"P",bld:"Handlowy",fl:"0",pr:"SU001_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU001_3",name:"Woda lod./Hildebrandt",num:"E00075",u:"P",bld:"Handlowy",fl:"0",pr:"SU001_3",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU002",name:"En.el./vacant",num:"21103277",u:"P",bld:"Handlowy",fl:"0",pr:"SU002",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU003-4",name:"En.el./Euro-Net",num:"IEC31036",u:"P",bld:"Handlowy",fl:"0",pr:"SU003-4",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU005",name:"En.el./Rossmann",num:"12997",u:"P",bld:"Handlowy",fl:"0",pr:"SU005",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU006",name:"En.el./Gold Inv.",num:"13008",u:"P",bld:"Handlowy",fl:"0",pr:"SU006",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU007",name:"En.el./Cefarm",num:"12988",u:"P",bld:"Handlowy",fl:"0",pr:"SU007",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU008",name:"En.el./NotrhPress",num:"12977",u:"P",bld:"Handlowy",fl:"0",pr:"SU008",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU009",name:"En.el./Palarnia",num:"10853",u:"P",bld:"Handlowy",fl:"0",pr:"SU009",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU010",name:"En.el./Kwiaciarnia",num:"10838",u:"P",bld:"Handlowy",fl:"0",pr:"SU010",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU011",name:"En.el./MBM",num:"10845",u:"P",bld:"Handlowy",fl:"0",pr:"SU011",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU012",name:"En.el./Vectra",num:"10843",u:"P",bld:"Handlowy",fl:"0",pr:"SU012",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_1",name:"En.el./MaxiZoo",num:"10854",u:"P",bld:"Handlowy",fl:"0",pr:"SU013_1",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU013_2",name:"Went/MaxiZoo",num:"10831",u:"P",bld:"Handlowy",fl:"0",pr:"SU013_2",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU014",name:"En.el./MBM",num:"10822",u:"P",bld:"Handlowy",fl:"0",pr:"SU014",unit:"kWh"},
+  {id:"LICZ_P_GRUDZ_R-0-SU015",name:"En.el./PKO BP",num:"10833",u:"P",bld:"Handlowy",fl:"0",pr:"SU015",unit:"kWh"},
+  ],
+  MALBO: [
+  {id:"LICZ_G_MALBO",name:"Gaz-glowny",num:"392050",u:"G",bld:null,fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_P_MALBO",name:"Prad-glowny",num:"42993585",u:"P",bld:null,fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-~1-H0001",name:"EXATEL",num:"3275772",u:"P",bld:"Handlowy",fl:"~1",pr:"H0001",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-~1-H0002",name:"JYSK (magazyn w parkingu)",num:"10040416",u:"P",bld:"Handlowy",fl:"~1",pr:"H0002",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-~1-RKOT",name:"Podlicznik Kotlowni",num:"K 01",u:"P",bld:"Handlowy",fl:"~1",pr:"RKOT",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-~1-RWINT",name:"Podlicznik Windy Towarowey",num:"K 02",u:"P",bld:"Handlowy",fl:"~1",pr:"RWINT",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-0-H0001",name:"ACTION (licznik lokalu)",num:"SGS0446",u:"P",bld:"Handlowy",fl:"0",pr:"H0001",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-0-H0002",name:"SANTANDER BANK",num:"3701567",u:"P",bld:"Handlowy",fl:"0",pr:"H0002",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-0-H03-4",name:"vacant/po Rossman",num:"293350",u:"P",bld:"Handlowy",fl:"0",pr:"H03-4",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-0-H0005",name:"JYSK (magazyn w parterze)",num:"1049438",u:"P",bld:"Handlowy",fl:"0",pr:"H0005",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-0-RSHR",name:"Podlicznik Shody Ruchome",num:"K 03",u:"P",bld:"Handlowy",fl:"0",pr:"RSHR",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-H0201",name:"TERG",num:"BM 03B-L",u:"P",bld:"Handlowy",fl:"1",pr:"H0201",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-H0202",name:"JYSK",num:"LE-02dCT",u:"P",bld:"Handlowy",fl:"1",pr:"H0202",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-RWENT1",name:"centrale went.Action/vacant po Rossmann",num:"BM-030-L1",u:"P",bld:"Handlowy",fl:"1",pr:"RWENT1",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-RWENT2",name:"centrale went.Santander",num:"BM-030-L3",u:"P",bld:"Handlowy",fl:"1",pr:"RWENT2",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-RWENT3",name:"centrale went.Jysk/Terg",num:"BM-030-L2",u:"P",bld:"Handlowy",fl:"1",pr:"RWENT3",unit:"kWh"},
+  {id:"LICZ_P_MALBO_R-1-RWENT4",name:"centrale went. obszary wspolny",num:"LE-02d CT",u:"P",bld:"Handlowy",fl:"1",pr:"RWENT4",unit:"kWh"},
+  {id:"LICZ_W_MALBO",name:"Wody - glowny",num:"200305151222",u:"W",bld:null,fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_MALBO_R-0-H0001",name:"ACTION",num:"2857847",u:"W",bld:"Handlowy",fl:"0",pr:"H0001",unit:"m³"},
+  {id:"LICZ_W_MALBO_R-0-H0002",name:"SANTANDER BANK",num:"4995512",u:"W",bld:"Handlowy",fl:"0",pr:"H0002",unit:"m³"},
+  {id:"LICZ_W_MALBO_R-0-H03-4",name:"vacant/po Rossman",num:"1220217676",u:"W",bld:"Handlowy",fl:"0",pr:"H03-4",unit:"m³"},
+  {id:"LICZ_W_MALBO_R-1-H0201",name:"TERG",num:"1220439451",u:"W",bld:"Handlowy",fl:"1",pr:"H0201",unit:"m³"},
+  {id:"LICZ_W_MALBO_R-1-H0202_1",name:"JYSK",num:"1220101319",u:"W",bld:"Handlowy",fl:"1",pr:"H0202_1",unit:"m³"},
+  {id:"LICZ_W_MALBO_R-1-H0202_2",name:"JYSK",num:"1220101322",u:"W",bld:"Handlowy",fl:"1",pr:"H0202_2",unit:"m³"},
+  ],
+  ZIELON: [
+  {id:"LICZ_C_ZIELON_CWWI",name:"CWW I-Glowny ",num:"",u:"C",bld:"CWWI",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWII",name:"CWW II-Glowny ",num:"",u:"C",bld:"CWWII",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWII-0-H0001",name:"CWW II-Biedronka",num:"",u:"C",bld:"CWWII",fl:"0",pr:"H0001",unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWII-0-H0002",name:"CWW II-Pepco",num:"",u:"C",bld:"CWWII",fl:"0",pr:"H0002",unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWII-0-H03/4_1",name:"CWW II-Derby1",num:"",u:"C",bld:"CWWII",fl:"0",pr:"H03/4_1",unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWII-0-H03/4_2",name:"Vacant",num:"",u:"C",bld:"CWWII",fl:"0",pr:"H03/4_2",unit:"GJ"},
+  {id:"LICZ_C_ZIELON_SP-0-H0001U",name:"CWW II-Stacja paliwa",num:"",u:"C",bld:"SP",fl:"0",pr:"H0001U",unit:"GJ"},
+  {id:"LICZ_C_ZIELON_CWWIII",name:"CWW III-Glowny ",num:"",u:"C",bld:"CWWIII",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_C_ZIELON_O",name:"Biurowec-Glowny",num:"",u:"C",bld:"Biurowy",fl:null,pr:null,unit:"GJ"},
+  {id:"LICZ_P_ZIELON_CWWI-D",name:"CWWI-Glowny Dzien",num:"10919.551",u:"P",bld:"CWWI",fl:null,pr:"D",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-N",name:"CWWI-Glowny Noc",num:"4092.468",u:"P",bld:"CWWI",fl:null,pr:"N",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0001B",name:"SENPO",num:"63.02",u:"P",bld:"CWWI",fl:"0",pr:"H0001B",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0002WENT",name:"ABRA S.A. ",num:"146.15",u:"P",bld:"CWWI",fl:"0",pr:"H0002WENT",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0003WENT",name:"Vacant",num:"561.33",u:"P",bld:"CWWI",fl:"0",pr:"H0003WENT",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0004WENT",name:"JYSK Sp. z o.o.",num:"444.49",u:"P",bld:"CWWI",fl:"0",pr:"H0004WENT",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0005WENT",name:"Vacant",num:"99.421",u:"P",bld:"CWWI",fl:"0",pr:"H0005WENT",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0006",name:"Gastronomia Feliks Wiater",num:"357.64",u:"P",bld:"CWWI",fl:"0",pr:"H0006",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0007",name:"SENPO II",num:"66.77",u:"P",bld:"CWWI",fl:"0",pr:"H0007",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-H0008",name:"Vacant",num:"256.88",u:"P",bld:"CWWI",fl:"0",pr:"H0008",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-RECWENZI",name:"EDF E.C. Zielona Góra",num:"284.13",u:"P",bld:"CWWI",fl:"0",pr:"RECWENZI",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-RWENTH",name:"Klima HOLL",num:"332.11",u:"P",bld:"CWWI",fl:"0",pr:"RWENTH",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_P",name:"Oświetlenie zewnętrzne",num:"384087",u:"P",bld:null,fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-RAGRCHL",name:"Woda lodowa",num:"",u:"P",bld:"CWWI",fl:"0",pr:"RAGRCHL",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_P-0-C0015",name:"Wisienka",num:"",u:"P",bld:null,fl:"0",pr:"C0015",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWI-0-RNW",name:"Nowe rozgałęzienie",num:"",u:"P",bld:"CWWI",fl:"0",pr:"RNW",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-D",name:"CWWII-Glowny Dzien",num:"35637.185",u:"P",bld:"CWWII",fl:null,pr:"D",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-N",name:"CWWII-Glowny Noc",num:"13322.003",u:"P",bld:"CWWII",fl:null,pr:"N",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-H0001",name:"Jeronimo Martins Dystrybucja S.A.",num:"",u:"P",bld:"CWWII",fl:"0",pr:"H0001",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-H0002",name:"PEPCO Poland Sp. z o.o.",num:"638831",u:"P",bld:"CWWII",fl:"0",pr:"H0002",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_1",name:"Derby Jeans_1",num:"277747",u:"P",bld:"CWWII",fl:"0",pr:"H03/4_1",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_2",name:"Derby Jeans_2",num:"113958",u:"P",bld:"CWWII",fl:"0",pr:"H03/4_2",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-H03/4_3",name:"Vacant",num:"78836",u:"P",bld:"CWWII",fl:"0",pr:"H03/4_3",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-RECWENZII",name:"EDF E.C. Zielona Góra",num:"9225",u:"P",bld:"CWWII",fl:"0",pr:"RECWENZII",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWII-0-SUB2",name:"SubLicznik Derby-Pepco-EC",num:"",u:"P",bld:"CWWII",fl:"0",pr:"SUB2",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-D",name:"CWWIII-Glowny Dzien",num:"10653.684",u:"P",bld:"CWWIII",fl:null,pr:"D",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-N",name:"CWWIII-Glowny Noc",num:"1545.924",u:"P",bld:"CWWIII",fl:null,pr:"N",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0001",name:"Media Expert",num:"1689116",u:"P",bld:"CWWIII",fl:"0",pr:"H0001",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0002",name:"Action",num:"207479",u:"P",bld:"CWWIII",fl:"0",pr:"H0002",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-0-H0003",name:"PPG Deco",num:"106812",u:"P",bld:"CWWIII",fl:"0",pr:"H0003",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-0-M0001",name:"vacant (magazyn)",num:"",u:"P",bld:"CWWIII",fl:"0",pr:"M0001",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_CWWIII-0-M0002",name:"Jysk (magazyn)",num:"25231",u:"P",bld:"CWWIII",fl:"0",pr:"M0002",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O-D",name:"Buirowca-Glowny Dzien",num:"11787.074",u:"P",bld:"Biurowy",fl:null,pr:"D",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O-N",name:"Buirowca-Glowny Noc",num:"5926.493",u:"P",bld:"Biurowy",fl:null,pr:"N",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O-~1-B0001",name:"NetiaSA",num:"221238",u:"P",bld:"Biurowy",fl:"~1",pr:"B0001",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O-0-H05-7",name:"U Stodolnych",num:"",u:"P",bld:"Biurowy",fl:"0",pr:"H05-7",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_P-0-C0017",name:"Inpost",num:"14447",u:"P",bld:null,fl:"0",pr:"C0017",unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O_AMW1",name:"AMW1",num:"",u:"P",bld:"Biurowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O_AMW2",name:"AMW2",num:"",u:"P",bld:"Biurowy",fl:null,pr:null,unit:"kWh"},
+  {id:"LICZ_P_ZIELON_O-~1",name:"Biurowiec",num:"421948",u:"P",bld:"Biurowy",fl:"~1",pr:null,unit:"kWh"},
+  {id:"LICZ_P_ZIELON_SP-0-H0001U",name:"Stacja paliwa",num:"2807893",u:"P",bld:"SP",fl:"0",pr:"H0001U",unit:"kWh"},
+  {id:"LICZ_W_ZIELON_D",name:"Glowny Duzy",num:"",u:"W",bld:null,fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_ZIELON_M",name:"Glowny Maly",num:"",u:"W",bld:null,fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0002",name:"ABRA S.A.",num:"218",u:"W",bld:"CWWI",fl:"0",pr:"H0002",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0003",name:"Sklepy Komfort S.A.",num:"315",u:"W",bld:"CWWI",fl:"0",pr:"H0003",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0004",name:"JYSK Sp. z o.o.",num:"442",u:"W",bld:"CWWI",fl:"0",pr:"H0004",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0005",name:"Vacant",num:"193",u:"W",bld:"CWWI",fl:"0",pr:"H0005",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI-0-H0006",name:"Gastronomia Feliks Wiater",num:"2895",u:"W",bld:"CWWI",fl:"0",pr:"H0006",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWI",name:"Woda/CWW1",num:"19700",u:"W",bld:"CWWI",fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0001",name:"Jeronimo Martins Dystrybucja S.A.",num:"451",u:"W",bld:"CWWII",fl:"0",pr:"H0001",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWII-0-H03/4",name:"FOSSIL Sp. z o.o. ",num:"319",u:"W",bld:"CWWII",fl:"0",pr:"H03/4",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0002_1",name:"Pepco1",num:"52",u:"W",bld:"CWWII",fl:"0",pr:"H0002_1",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0002_2",name:"Pepco2",num:"115",u:"W",bld:"CWWII",fl:"0",pr:"H0002_2",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWII-0-H0004",name:"Vacant",num:"",u:"W",bld:"CWWII",fl:"0",pr:"H0004",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0001",name:"Media Expert",num:"763",u:"W",bld:"CWWIII",fl:"0",pr:"H0001",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0002",name:"Action",num:"301",u:"W",bld:"CWWIII",fl:"0",pr:"H0002",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWIII-0-H0003",name:"PPG Deco",num:"200",u:"W",bld:"CWWIII",fl:"0",pr:"H0003",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWIII-0-M0001",name:"vacant (magazyn)",num:"",u:"W",bld:"CWWIII",fl:"0",pr:"M0001",unit:"m³"},
+  {id:"LICZ_W_ZIELON_O",name:"Biurowiec",num:"3396",u:"W",bld:"Biurowy",fl:null,pr:null,unit:"m³"},
+  {id:"LICZ_W_ZIELON_O-~1-AMW",name:"AMW",num:"1471",u:"W",bld:"Biurowy",fl:"~1",pr:"AMW",unit:"m³"},
+  {id:"LICZ_W_ZIELON_SP-0-H0001U",name:"Stacja paliwa",num:"757",u:"W",bld:"SP",fl:"0",pr:"H0001U",unit:"m³"},
+  {id:"LICZ_W_ZIELON_CWWIII-0-RHYDRA",name:"Hydranty zewn. CWW3",num:"",u:"W",bld:"CWWIII",fl:"0",pr:"RHYDRA",unit:"m³"},
+  ],
+};
+
+const PROPERTY_CONFIG = {
+  GRUDZ:  { name: 'Grudziądz — Unia Park Retail',  code: 'GRUDZ'  },
+  MALBO:  { name: 'Malbork — CH Zawisza',           code: 'MALBO'  },
+  ZIELON: { name: 'Zielona Góra — CWW',             code: 'ZIELON' },
+};
+
+let METERS = [];  // set by selectProperty()
 
 const GROUPS = [
   { u:'C', label:'Ciepło', icon:'🔴' },
@@ -467,6 +607,23 @@ const GROUPS = [
   { u:'P', label:'Prąd',   icon:'🟡' },
 ];
 const BLDG = {O:'Biurowy', R:'Handlowy', X:'Wspólny'};
+
+let currentProperty = '';  // set by selectProperty()
+
+function selectProperty(prop) {
+  currentProperty = prop;
+  METERS = METERS_DATA[prop];
+  // Update buttons
+  ['GRUDZ','MALBO','ZIELON'].forEach(p => {
+    const btn = document.getElementById('btn-' + p);
+    if (btn) btn.classList.toggle('selected', p === prop);
+  });
+  const cfg = PROPERTY_CONFIG[prop];
+  document.getElementById('propStatus').textContent =
+    '✓ Wybrano: ' + cfg.name + ' (' + METERS.length + ' liczników)';
+  checkCanStart();
+}
+window.selectProperty = selectProperty;
 
 let prevReadings = {};  // id -> value
 let refDate = '';
@@ -814,12 +971,14 @@ async function processOcrImage(blob, id) {
   const statusEl = document.getElementById(`ocr-status-${id}`);
   statusEl.textContent = '⏳ Rozpoznawanie cyfr...';
 
-  // Preprocess: convert blob to image, increase contrast
   const imgUrl = URL.createObjectURL(blob);
 
-  // Try OCR.space (online) first, fallback to Tesseract (offline)
+  // Priority: 1) Google Vision API, 2) OCR.space, 3) Tesseract offline
   let result = null;
   if (navigator.onLine) {
+    result = await ocrGoogle(blob, statusEl);
+  }
+  if (!result && navigator.onLine) {
     result = await ocrOnline(blob, statusEl);
   }
   if (!result) {
@@ -846,6 +1005,44 @@ async function processOcrImage(blob, id) {
     statusEl.textContent = '⚠️ OCR nie powiodło się — wpisz ręcznie';
     statusEl.style.color = 'var(--yellow)';
   }
+}
+
+async function ocrGoogle(blob, statusEl) {
+  statusEl.textContent = '⏳ OCR Google Vision...';
+  try {
+    // Convert blob to base64
+    const base64 = await new Promise((res, rej) => {
+      const reader = new FileReader();
+      reader.onload  = () => res(reader.result.split(',')[1]);
+      reader.onerror = rej;
+      reader.readAsDataURL(blob);
+    });
+
+    const GOOGLE_VISION_KEY = 'AIzaSyB_XcrSFN0wIHfw9kl6_nJCxH6ytgOMh8k';
+    const res = await fetch(
+      `https://vision.googleapis.com/v1/images:annotate?key=${GOOGLE_VISION_KEY}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requests: [{
+            image: { content: base64 },
+            features: [{ type: 'TEXT_DETECTION', maxResults: 1 }]
+          }]
+        }),
+        signal: AbortSignal.timeout(10000)
+      }
+    );
+    const data = await res.json();
+    const text = data.responses?.[0]?.textAnnotations?.[0]?.description;
+    if (text && text.trim()) {
+      console.log('[Google Vision] raw:', text);
+      return text.trim();
+    }
+  } catch(e) {
+    console.warn('Google Vision failed:', e);
+  }
+  return null;
 }
 
 async function ocrOnline(blob, statusEl) {
@@ -895,7 +1092,7 @@ async function ocrOffline(imgUrl, statusEl) {
 function finishSession() {
   // Build export
   const output = {
-    property: 'GRUDZ',
+    property: currentProperty,
     readingDate,
     readerName,
     refDate,
@@ -939,7 +1136,7 @@ function downloadJSON() {
   a.href = URL.createObjectURL(blob);
   // Add timestamp suffix so multiple sessions on same date don't overwrite
   const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-  a.download = `odczyty_GRUDZ_${data.readingDate}_${ts}.json`;
+  a.download = `odczyty_${data.property}_${data.readingDate}_${ts}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
