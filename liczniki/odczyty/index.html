@@ -534,8 +534,14 @@ document.getElementById('xlsxInput').addEventListener('change', async e => {
       }
     }
   }
-  refDate = lastDate;
-  document.getElementById('refDateBadge').textContent = lastDate;
+  // Convert PL date format DD.MM.YYYY → ISO YYYY-MM-DD for JSON storage
+  if (lastDate && lastDate.includes('.')) {
+    const parts = lastDate.split('.');
+    if (parts.length === 3) {
+      refDate = `${parts[2]}-${parts[1].padStart(2,'0')}-${parts[0].padStart(2,'0')}`;
+    } else { refDate = lastDate; }
+  } else { refDate = lastDate; }
+  document.getElementById('refDateBadge').textContent = lastDate; // display stays PL format
   document.getElementById('refCountBadge').textContent = count;
   document.getElementById('uploadSuccess').style.display = 'block';
   checkCanStart();
@@ -998,7 +1004,12 @@ function processQRData(raw) {
     }
 
     // Map values array to meter IDs using fixed METER_ORDER
-    refDate = data.d;
+    // Convert PL format DD.MM.YYYY → ISO if needed
+    const rd = data.d || '';
+    if (rd.includes('.')) {
+      const p = rd.split('.');
+      refDate = p.length === 3 ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : rd;
+    } else { refDate = rd; }
     prevReadings = {};
     METERS.forEach((m, i) => {
       if (data.v[i] !== undefined && data.v[i] !== null) {
