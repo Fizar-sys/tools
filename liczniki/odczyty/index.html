@@ -90,7 +90,6 @@
   .meter-card.error  { border-left:3px solid var(--red); }
 
   .mc-header { padding:14px 16px; cursor:pointer; display:flex; align-items:center; gap:12px; }
-  .meter-card.done .mc-header { padding-bottom:4px; }
   .mc-status { width:10px; height:10px; border-radius:50%; background:var(--border); flex-shrink:0; }
   .meter-card.done   .mc-status { background:var(--green); }
   .meter-card.active .mc-status { background:var(--accent); }
@@ -101,24 +100,6 @@
   .mc-prev { font-family:'IBM Plex Mono',monospace; font-size:14px; color:var(--text);
     text-align:right; flex-shrink:0; }
   .mc-prev small { display:block; font-size:10px; color:#94a3b8; margin-top:2px; }
-
-  /* ── Done card two-column summary ── */
-  .mc-summary {
-    display:none;
-    padding:0 16px 10px 38px;
-    gap:2px;
-    flex-direction:column;
-    margin-top:-6px;
-  }
-  .meter-card.done .mc-summary { display:flex; }
-  .mc-summary-row {
-    display:flex; justify-content:flex-end; align-items:baseline; gap:4px;
-    font-family:'IBM Plex Mono',monospace; font-size:14px;
-  }
-  .mc-val-current { color:var(--green);  font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:14px; }
-  .mc-val-diff    { color:#06b6d4;       font-weight:600; font-family:'IBM Plex Mono',monospace; font-size:14px; }
-  .mc-val-skip    { color:var(--muted);  font-style:italic; font-size:13px; }
-  .mc-val-unit    { font-size:10px; color:#94a3b8; margin-left:3px; }
 
   /* Input area */
   .mc-body { display:none; padding:0 16px 16px; }
@@ -278,7 +259,7 @@
       <h2>2. Parametry sesji</h2>
       <p>Uzupełnij datę bieżącego odczytu.</p>
       <div class="field-row">
-        <label>Data odczytu</label>
+        <label>Data odczytu <span style="font-size:11px;opacity:.6;font-weight:400">(data raportowa — ostatni dzień miesiąca)</span></label>
         <input type="date" id="readingDate">
       </div>
       <div class="field-row">
@@ -339,7 +320,7 @@
       border-top:1px solid var(--border);
       color:var(--text);font-size:14px;font-weight:500;cursor:pointer;text-align:left;
       font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:10px;">
-      ✅ Zakończ i wyślij
+      ⬇ Zakończ i pobierz JSON
     </button>
   </div>
 
@@ -377,11 +358,8 @@
     <div class="stat-pill stat-done" id="statDone">— odczytów</div>
     <div class="stat-pill stat-skip" id="statSkip">— pominięto</div>
   </div>
-  <p id="sendStatus" style="font-size:13px;min-height:20px;margin-bottom:16px;"></p>
-  <button class="btn-download" onclick="sendFile()" id="btnSend">📤 Wyślij plik</button>
-  <button class="btn-restart" onclick="downloadJSON()" style="margin-top:8px;">⬇ Pobierz lokalnie</button>
-  <button class="btn-restart" onclick="resumeSession()">← Kontynuuj sesję</button>
-  <button class="btn-restart" onclick="location.reload()" style="margin-top:4px;">↺ Nowa sesja</button>
+  <button class="btn-download" onclick="downloadJSON()">⬇ Pobierz plik JSON</button>
+  <button class="btn-restart" onclick="location.reload()">← Nowa sesja</button>
 </div>
 
 <!-- ── Camera modal ── -->
@@ -501,8 +479,15 @@ let cameraStream = null;
 let tesseractWorker = null;
 
 // ── Setup ─────────────────────────────────────────────────────────────────
-// Default today's date
-document.getElementById('readingDate').value = new Date().toISOString().slice(0,10);
+// Default: last day of previous month (reporting/accounting date)
+(function() {
+  const t = new Date();
+  const lastDay = new Date(t.getFullYear(), t.getMonth(), 0); // day 0 = last day of prev month
+  const yyyy = lastDay.getFullYear();
+  const mm   = String(lastDay.getMonth()+1).padStart(2,'0');
+  const dd   = String(lastDay.getDate()).padStart(2,'0');
+  document.getElementById('readingDate').value = `${yyyy}-${mm}-${dd}`;
+})();
 
 document.getElementById('xlsxInput').addEventListener('change', async e => {
   const file = e.target.files[0];
@@ -626,10 +611,8 @@ function createMeterCard(m) {
       </div>
       <div class="mc-prev">
         <span style="color:var(--yellow);font-weight:600">${prevStr}</span> <span style="font-size:10px;color:#94a3b8">${m.unit}</span>
+        <small>${refDate || '—'}</small>
       </div>
-    </div>
-    <div class="mc-summary" id="summary-${m.id}">
-      <!-- filled by updateCardSummary() -->
     </div>
     <div class="mc-body">
       <div class="ocr-status" id="ocr-status-${m.id}"></div>
@@ -733,10 +716,9 @@ function confirmReading(id) {
   readings[id] = { value: val, skipped: false, ocrUsed: false };
 
   const card = document.getElementById(`card-${id}`);
-  card.classList.remove('active','warning','error','u-bg-C','u-bg-W','u-bg-P');
+  card.classList.remove('active','warning','error');
   card.classList.add('done');
 
-  updateCardSummary(id);
   updateProgress();
   moveToNext(id);
 }
@@ -745,48 +727,12 @@ window.confirmReading = confirmReading;
 function skipMeter(id) {
   readings[id] = { value: null, skipped: true, ocrUsed: false };
   const card = document.getElementById(`card-${id}`);
-  card.classList.remove('active','u-bg-C','u-bg-W','u-bg-P');
+  card.classList.remove('active');
   card.classList.add('warning');
-  updateCardSummary(id);
   updateProgress();
   moveToNext(id);
 }
 window.skipMeter = skipMeter;
-
-function updateCardSummary(id) {
-  const summaryEl = document.getElementById(`summary-${id}`);
-  if (!summaryEl) return;
-  const meter   = METERS.find(m => m.id === id);
-  const reading = readings[id];
-  const prev    = prevReadings[id];
-  const unit    = meter ? meter.unit : '';
-
-  if (!reading) { summaryEl.innerHTML = ''; return; }
-
-  if (reading.skipped) {
-    summaryEl.innerHTML = `
-      <div class="mc-summary-row">
-        <span class="mc-val-skip">pominięto ⏭</span>
-      </div>`;
-    return;
-  }
-
-  const curr = reading.value;
-  const diff = (prev !== undefined && curr !== null) ? curr - prev : null;
-  const diffStr = diff !== null
-    ? (diff >= 0 ? '+' : '') + fmtNum(diff)
-    : '—';
-
-  summaryEl.innerHTML = `
-    <div class="mc-summary-row">
-      <span class="mc-val-current">${fmtNum(curr)}</span>
-      <span class="mc-val-unit">${unit}</span>
-    </div>
-    <div class="mc-summary-row">
-      <span class="mc-val-diff">${diffStr}</span>
-      <span class="mc-val-unit">${unit}</span>
-    </div>`;
-}
 
 function moveToNext(currentId) {
   const idx = METERS.findIndex(m => m.id === currentId);
@@ -973,84 +919,27 @@ function finishSession() {
   document.getElementById('statDone').textContent = `${done} odczytów`;
   document.getElementById('statSkip').textContent = `${skip} pominięto`;
 
+  deactivateBackGuard();
   document.getElementById('panel-read').classList.remove('active');
   document.getElementById('panel-done').classList.add('active');
-
 }
 window.finishSession = finishSession;
 
-// ── Export helpers ────────────────────────────────────────────────────────
-function getExportFile() {
-  const data = window._exportData;
-  if (!data) return null;
-  const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
-  const fileName = `odczyty_${data.property}_${data.readingDate}_${ts}.json`;
-  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
-  const file = new File([blob], fileName, {type:'application/json'});
-  return { blob, file, fileName, data };
-}
-
 function downloadJSON() {
-  const result = getExportFile();
-  if (!result) return;
+  const data = window._exportData;
+  if (!data) return;
+  const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(result.blob);
-  a.download = result.fileName;
+  a.href = URL.createObjectURL(blob);
+  // Add timestamp suffix so multiple sessions on same date don't overwrite
+  const ts = new Date().toISOString().replace(/[:.]/g,'-').slice(0,19);
+  a.download = `odczyty_GRUDZ_${data.readingDate}_${ts}.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(a.href);
-  setStatus('⬇ Plik pobrany lokalnie.', 'var(--muted)');
 }
 window.downloadJSON = downloadJSON;
-
-function resumeSession() {
-  document.getElementById('panel-done').classList.remove('active');
-  document.getElementById('panel-read').classList.add('active');
-}
-window.resumeSession = resumeSession;
-
-function setStatus(msg, color) {
-  const el = document.getElementById('sendStatus');
-  if (!el) return;
-  el.textContent = msg;
-  el.style.color = color || 'var(--muted)';
-}
-
-async function sendFile() {
-  const result = getExportFile();
-  if (!result) return;
-  const { file, fileName, data } = result;
-
-  const btn = document.getElementById('btnSend');
-  if (btn) btn.disabled = true;
-  setStatus('📤 Wysyłanie...', 'var(--muted)');
-
-  if (navigator.canShare && navigator.canShare({files:[file]})) {
-    try {
-      await navigator.share({
-        files: [file],
-        title: `Odczyty ${data.property} ${data.readingDate}`,
-        text: `Odczyty liczników ${data.property} za ${data.refDate} — wyślij na testsm@fizar.pl`
-      });
-      setStatus('✅ Plik wysłany!', 'var(--green)');
-      if (btn) btn.disabled = false;
-      return;
-    } catch(e) {
-      if (e.name === 'AbortError') {
-        setStatus('', '');
-        if (btn) btn.disabled = false;
-        return;
-      }
-    }
-  }
-
-  // Fallback: download only + instruction
-  downloadJSON();
-  setStatus('⬇ Plik pobrany. Otwórz WhatsApp lub Outlook i wyślij plik na testsm@fizar.pl', 'var(--yellow)');
-  if (btn) btn.disabled = false;
-}
-window.sendFile = sendFile;
 
 // ── QR Scanner ───────────────────────────────────────────────────────────────
 let qrScanStream = null;
@@ -1245,34 +1134,45 @@ function jumpToMeter(id) {
 }
 window.jumpToMeter = jumpToMeter;
 
-// ── Back button protection ───────────────────────────────────────────────────
-// Push a state so we can intercept the back button during an active session
+// ── Back button / navigation protection ──────────────────────────────────────
+// beforeunload fires on EVERY navigation attempt reliably.
+// popstate re-push traps Android back button continuously.
+// Session ends ONLY via deliberate menu action.
+
+let sessionGuardActive = false;
+
 function activateBackGuard() {
-  history.pushState({sessionActive: true}, '');
-  window.addEventListener('popstate', handleBackButton);
+  sessionGuardActive = true;
+  window.addEventListener('beforeunload', beforeUnloadHandler);
+  // Pre-fill history stack so back button has nowhere to go
+  history.pushState({s:1}, '');
+  history.pushState({s:2}, '');
+  history.pushState({s:3}, '');
+  window.addEventListener('popstate', popStateHandler);
 }
 
-function handleBackButton(e) {
-  const panel = document.getElementById('panel-read');
-  if (!panel.classList.contains('active')) return;
-  // Re-push state so back button keeps being intercepted
-  history.pushState({sessionActive: true}, '');
-  // Show confirmation
-  const done = Object.values(readings).filter(r => !r.skipped && r.current !== null).length;
-  const msg = done > 0
-    ? `Masz ${done} wprowadzonych odczytów.
+function beforeUnloadHandler(e) {
+  if (!sessionGuardActive) return;
+  e.preventDefault();
+  e.returnValue = '';
+  return '';
+}
 
-Czy na pewno chcesz opuścić sesję? Niezapisane dane zostaną utracone.
+function popStateHandler() {
+  if (!sessionGuardActive) return;
+  // Continuously re-fill the stack — back button never escapes
+  history.pushState({s:1}, '');
+  history.pushState({s:2}, '');
+  history.pushState({s:3}, '');
+}
 
-Użyj przycisku ··· → Zakończ i pobierz JSON aby zapisać dane.`
-    : `Czy na pewno chcesz opuścić sesję?`;
-  if (confirm(msg)) {
-    // User confirmed exit — remove guard and go back
-    window.removeEventListener('popstate', handleBackButton);
-    history.back();
-  }
+function deactivateBackGuard() {
+  sessionGuardActive = false;
+  window.removeEventListener('beforeunload', beforeUnloadHandler);
+  window.removeEventListener('popstate', popStateHandler);
 }
 window.activateBackGuard = activateBackGuard;
+window.deactivateBackGuard = deactivateBackGuard;
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 function fmtNum(n) {
