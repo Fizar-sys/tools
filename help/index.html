@@ -1,1 +1,970 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FIZAR Genie — Instrukcja v3.0</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0f1117;
+  --surface:  #181c27;
+  --surface2: #1e2435;
+  --border:   #2a3148;
+  --accent:   #3b82f6;
+  --accent2:  #60a5fa;
+  --text:     #e2e8f0;
+  --muted:    #64748b;
+  --green:    #22c55e;
+  --sidebar-w: 260px;
+}
 
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+}
+
+/* ── TOP NAV ── */
+.topnav {
+  position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: 54px;
+  display: flex; align-items: center;
+  padding: 0 20px; gap: 16px;
+}
+.topnav .logo {
+  font-family: 'IBM Plex Mono', monospace;
+  font-weight: 600; font-size: 16px; color: var(--accent);
+  white-space: nowrap;
+}
+.topnav .logo span { color: var(--muted); font-weight: 400; }
+.topnav-right { margin-left: auto; display: flex; gap: 10px; align-items: center; }
+
+.btn-dl {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 7px 14px; border-radius: 6px;
+  background: var(--accent); color: #fff;
+  font-size: 13px; font-weight: 500; font-family: inherit;
+  border: none; cursor: pointer; text-decoration: none;
+  transition: background .15s;
+}
+.btn-dl:hover { background: var(--accent2); }
+
+.btn-menu {
+  display: none;
+  background: transparent; border: 1px solid var(--border);
+  color: var(--muted); border-radius: 6px;
+  padding: 6px 10px; cursor: pointer; font-size: 18px;
+}
+
+/* ── LAYOUT ── */
+.layout {
+  display: flex;
+  margin-top: 54px;
+  min-height: calc(100vh - 54px);
+}
+
+/* ── SIDEBAR ── */
+.sidebar {
+  position: fixed; top: 54px; left: 0; bottom: 0;
+  width: var(--sidebar-w);
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+  overflow-y: auto;
+  padding: 16px 0;
+  transition: transform .25s;
+  z-index: 50;
+}
+.sidebar::-webkit-scrollbar { width: 4px; }
+.sidebar::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+.toc-lang {
+  font-size: 11px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  padding: 12px 20px 6px;
+}
+.toc-item {
+  display: block; padding: 5px 20px;
+  font-size: 13px; color: var(--muted);
+  text-decoration: none; border-left: 2px solid transparent;
+  transition: all .12s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.toc-item:hover { color: var(--text); background: var(--surface2); }
+.toc-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(59,130,246,.08); }
+.toc-item.sub { padding-left: 32px; font-size: 12px; }
+
+/* ── CONTENT ── */
+.content {
+  margin-left: var(--sidebar-w);
+  padding: 40px 48px 80px;
+  max-width: calc(var(--sidebar-w) + 780px);
+  width: 100%;
+}
+
+/* ── TYPOGRAPHY ── */
+h2.section-h {
+  font-size: 22px; font-weight: 600; color: var(--text);
+  margin: 48px 0 16px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+h2.section-h:first-child { margin-top: 0; }
+
+h3 {
+  font-size: 16px; font-weight: 500; color: var(--accent2);
+  margin: 28px 0 10px;
+}
+
+p {
+  color: #cbd5e1;
+  margin-bottom: 10px;
+}
+
+.lang-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 56px 0 32px;
+}
+.lang-divider::before, .lang-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+.lang-divider span {
+  font-size: 13px; font-weight: 600; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--muted);
+  white-space: nowrap; padding: 4px 12px;
+  border: 1px solid var(--border); border-radius: 20px;
+  background: var(--surface2);
+}
+
+/* ── TABLES ── */
+table {
+  width: 100%; border-collapse: collapse;
+  margin: 16px 0 24px;
+  font-size: 13px;
+  border: 1px solid var(--border);
+  border-radius: 8px; overflow: hidden;
+}
+th {
+  background: var(--surface2);
+  color: var(--accent2);
+  font-weight: 500; font-size: 12px; letter-spacing: .4px;
+  padding: 10px 14px; text-align: left;
+  border-bottom: 1px solid var(--border);
+}
+td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--border);
+  color: #cbd5e1; vertical-align: top;
+}
+tr:last-child td { border-bottom: none; }
+tr:nth-child(even) td { background: rgba(30,36,53,.5); }
+
+/* ── MOBILE ── */
+@media (max-width: 768px) {
+  :root { --sidebar-w: 0px; }
+
+  .sidebar {
+    transform: translateX(-260px);
+    width: 260px;
+  }
+  .sidebar.open {
+    transform: translateX(0);
+    box-shadow: 4px 0 20px rgba(0,0,0,.4);
+  }
+  .btn-menu { display: block; }
+  .content {
+    margin-left: 0;
+    padding: 24px 20px 60px;
+  }
+  h2.section-h { font-size: 18px; margin-top: 36px; }
+  .topnav .logo { font-size: 14px; }
+}
+
+@media (max-width: 480px) {
+  .content { padding: 20px 16px 60px; }
+  table { font-size: 12px; }
+  th, td { padding: 8px 10px; }
+  .btn-dl span.dl-label { display: none; }
+}
+
+/* ── OVERLAY ── */
+.overlay {
+  display: none; position: fixed;
+  inset: 0; background: rgba(0,0,0,.5);
+  z-index: 40;
+}
+.overlay.show { display: block; }
+</style>
+</head>
+<body>
+
+<!-- TOP NAV -->
+<nav class="topnav">
+  <button class="btn-menu" id="btnMenu" onclick="toggleSidebar()">☰</button>
+  <div class="logo">FIZAR<span>.genie</span></div>
+  <span style="color:var(--muted);font-size:13px">Instrukcja v3.0</span>
+  <div class="topnav-right">
+    <a href="FIZAR_Genie_Instrukcja_v3.pdf" download class="btn-dl">
+      ⬇ <span class="dl-label">Pobierz PDF</span>
+    </a>
+    <a href="../" style="color:var(--muted);font-size:13px;text-decoration:none">← Genie</a>
+  </div>
+</nav>
+
+<div class="overlay" id="overlay" onclick="toggleSidebar()"></div>
+
+<!-- SIDEBAR TOC -->
+<aside class="sidebar" id="sidebar">
+  <div class="toc-lang">🇵🇱 Polski</div>
+  <a href="#lang-pl" class="toc-item">Wstęp</a>
+  <a href="#1_Wezwania_do_Zapłaty" class="toc-item">1. Wezwania</a>
+  <a href="#2_Rozliczenie_Service_Charge_SCH" class="toc-item">2. SCH</a>
+  <a href="#3_Odczyty_Liczników" class="toc-item">3. Odczyty Liczników</a>
+  <a href="#31_System_QR__idea_i_logika" class="toc-item sub">3.1 System QR</a>
+  <a href="#32_Kolory_mediów__wskazówka_wizualna" class="toc-item sub">3.2 Kolory</a>
+  <a href="#33_Naklejki_QR__generator_i_drukowanie" class="toc-item sub">3.3 Naklejki QR</a>
+  <a href="#34_Przygotowanie_miesiąca__kod_QR" class="toc-item sub">3.4 Przygotowanie</a>
+  <a href="#35_Sesja_odczytów__krok_po_kroku" class="toc-item sub">3.5 Sesja odczytów</a>
+  <a href="#36_Wprowadzanie_odczytu__szczegóły" class="toc-item sub">3.6 Wprowadzanie</a>
+  <a href="#37_Trzy_sposoby_wprowadzenia_odczytu" class="toc-item sub">3.7 Trzy sposoby</a>
+  <a href="#38_OCR__szczegóły_techniczne" class="toc-item sub">3.8 OCR</a>
+  <a href="#39_Elastyczne_daty_odczytów" class="toc-item sub">3.9 Daty</a>
+  <a href="#310_Zakończenie_sesji_i_wysyłka_pliku_danych" class="toc-item sub">3.10 Zakończenie</a>
+  <a href="#311_Przetwarzanie_plików_JSON__Power_Query_i_Office_Script" class="toc-item sub">3.11 PQ + Script</a>
+  <a href="#312_Szybka_ściąga__Liczniki" class="toc-item sub">3.12 Ściąga</a>
+
+  <div class="toc-lang" style="margin-top:16px">🇺🇦 Українська</div>
+  <a href="#lang-ua" class="toc-item">Вступ</a>
+  <a href="#1_Вимоги_про_оплату" class="toc-item">1. Вимоги</a>
+  <a href="#2_Розрахунок_Service_Charge_SCH" class="toc-item">2. SCH</a>
+  <a href="#3_Показання_лічильників" class="toc-item">3. Показання</a>
+  <a href="#31_Система_QR__ідея_та_логіка" class="toc-item sub">3.1 Система QR</a>
+  <a href="#32_Кольори_ресурсів" class="toc-item sub">3.2 Кольори</a>
+  <a href="#33_Наклейки_QR__генератор_і_друк" class="toc-item sub">3.3 Наклейки QR</a>
+  <a href="#34_Підготовка_місяця__QRкод" class="toc-item sub">3.4 Підготовка</a>
+  <a href="#35_Сеанс_показань__крок_за_кроком" class="toc-item sub">3.5 Сеанс</a>
+  <a href="#36_Введення_показань__деталі" class="toc-item sub">3.6 Введення</a>
+  <a href="#37_Три_способи_введення_показань" class="toc-item sub">3.7 Три способи</a>
+  <a href="#38_OCR__технічні_деталі" class="toc-item sub">3.8 OCR</a>
+  <a href="#39_Гнучкі_дати_показань" class="toc-item sub">3.9 Дати</a>
+  <a href="#310_Завершення_сесії_та_надсилання_файлу_даних" class="toc-item sub">3.10 Завершення</a>
+  <a href="#311_Обробка_JSONфайлів__Power_Query_та_Office_Script" class="toc-item sub">3.11 PQ + Script</a>
+  <a href="#312_Коротка_шпаргалка__Показання" class="toc-item sub">3.12 Шпаргалка</a>
+</aside>
+
+<!-- CONTENT -->
+<main class="layout">
+  <div class="content">
+<div class="lang-divider" id="lang-pl"><span>🇵🇱 Polski</span></div>
+<h2 class="section-h" id="wstęp_—_fizar_genie">Wstęp — Fizar Genie</h2>
+<p>Fizar Genie to zestaw narzędzi przeglądarkowych wspierających codzienną pracę zarządcy nieruchomości. Wszystkie narzędzia działają w przeglądarce — bez instalacji, bez logowania.</p>
+<p>Adres dostępu:</p>
+<h2 class="section-h" id="1_wezwania_do_zapłaty">1. Wezwania do Zapłaty</h2>
+<h3>1.1 Cel narzędzia</h3>
+<p>Narzędzie automatycznie generuje pisma — Wezwania do Zapłaty — na podstawie raportu struktury wiekowej należności eksportowanego z enova365.</p>
+<h3>1.2 Przygotowanie raportu Aging z enova365</h3>
+<p>Przed uruchomieniem narzędzia należy wyeksportować raport z systemu enova365:</p>
+<p>Raport: Struktura wiekowa per saldo</p>
+<p>Dokumenty: Wszystkie</p>
+<p>Grupa: Sprzedaż</p>
+<p>Format eksportu: PDF</p>
+<h3>1.3 Krok po kroku</h3>
+<p>Otwórz narzędzie Wezwania w przeglądarce</p>
+<p>Wgraj plik PDF z raportem Aging</p>
+<p>Sprawdź wygenerowane wezwania — każdy najemca osobno</p>
+<p>Pobierz dokumenty ZIP lub drukuj bezpośrednio</p>
+<h3>1.4 Statusy najemców</h3>
+<table>
+<tr>
+<th>Status</th>
+<th>Znaczenie</th>
+</tr>
+<tr>
+<td>🟢 Zielony</td>
+<td>Brak zaległości — bez wezwania</td>
+</tr>
+<tr>
+<td>🟡 Żółty</td>
+<td>Zaległość &lt; 30 dni — informacja</td>
+</tr>
+<tr>
+<td>🔴 Czerwony</td>
+<td>Zaległość &gt; 30 dni — wezwanie do zapłaty</td>
+</tr>
+</table>
+<h3>1.5 Uwagi praktyczne</h3>
+<p>Pole adresu w piśmie zawiera placeholder „adres do korespondencji&quot; — uzupełnij ręcznie przed wysyłką.</p>
+<p>Numer referencyjny pisma: FIZAR/NIERUCHOMOŚĆ/WZ/NNN/MM/RRRR — generowany automatycznie.</p>
+<p>Tytuł przelewu w piśmie zawiera numery faktur z tabeli.</p>
+<p>Narzędzie nie przechowuje danych — każda sesja zaczyna się od zera.</p>
+<h2 class="section-h" id="2_rozliczenie_service_charge_(">2. Rozliczenie Service Charge (SCH)</h2>
+<h3>2.1 Cel narzędzia</h3>
+<p>Narzędzie generuje listy przewodnie i załączniki do rocznego rozliczenia opłat wspólnych (Service Charge) dla każdego najemcy.</p>
+<h3>2.2 Przepływ pracy — role i odpowiedzialność</h3>
+<p>Rozliczenie SCH wymaga współpracy dwóch ról:</p>
+<table>
+<tr>
+<th>Rola</th>
+<th>Zadanie</th>
+</tr>
+<tr>
+<td>Zarządca nieruchomości</td>
+<td>Przygotowuje plik Excel z kosztami i wpłatami za rok, wysyła do weryfikacji, po potwierdzeniu — generuje dokumenty</td>
+</tr>
+<tr>
+<td>Administrator (Fizar)</td>
+<td>Weryfikuje dane z dokumentami księgowymi (GLC), potwierdza gotowość pliku i zwraca zarządcy</td>
+</tr>
+</table>
+<h3>2.3 Wymagany plik Excel</h3>
+<p>Plik Excel musi zawierać następujące arkusze:</p>
+<p>rozliczenie załączniki — szablon obliczeniowy z wyborem najemcy w komórce A4</p>
+<p>Najemcy — lista najemców z flagą SC w kolumnie H</p>
+<p>ZaliczkiWpłaty — miesięczne wpłaty zaliczek SC</p>
+<p>Podsumowanie 2025 — wyniki rozliczenia rocznego</p>
+<p>Nieruchomość (opcjonalnie) — dane zarządcy: imię, telefon, e-mail, miasto</p>
+<h3>2.4 Krok po kroku</h3>
+<p>Przygotuj plik Excel zgodnie z wymaganą strukturą</p>
+<p>Prześlij plik do weryfikacji administratorowi</p>
+<p>Po potwierdzeniu — otwórz narzędzie SCH</p>
+<p>Wgraj zweryfikowany plik Excel</p>
+<p>Generuj dokumenty dla wszystkich najemców jednym kliknięciem</p>
+<p>Pobierz ZIP z kompletem pism</p>
+<h3>2.5 Zawartość dokumentów</h3>
+<p>Każdy komplet (.docx) składa się z dwóch części:</p>
+<p>List przewodni (strona 1, pionowo) — kwota wpłacona, naliczona i wynik: nadpłata lub niedopłata. Kolor zielony = zwrot dla najemcy, czerwony = dopłata.</p>
+<p>Załącznik nr 1 (strony 2+, poziomo) — pełne rozliczenie miesięczne w 4 częściach: koszty centrum, wpłaty najemcy, koszty indywidualne, podsumowanie.</p>
+<h2 class="section-h" id="3_odczyty_liczników">3. Odczyty Liczników</h2>
+<h3>3.1 System QR — idea i logika</h3>
+<p>System identyfikacji liczników oparty jest na kodach QR naklejonych obok każdego licznika. Każdy kod QR zawiera unikalny identyfikator licznika zgodny z systemem enova365 (np. LICZ_W_GRUDZ_O-2-B0006).</p>
+<p>Dwa rodzaje kodów QR w systemie:</p>
+<table>
+<tr>
+<th>Typ kodu QR</th>
+<th>Zastosowanie</th>
+</tr>
+<tr>
+<td>QR z arkusza &quot;QR_JSON_Helper&quot;</td>
+<td>Używany RAZ na początku sesji. Ładuje poprzednie odczyty do aplikacji.</td>
+</tr>
+<tr>
+<td>Naklejka QR na liczniku</td>
+<td>Używany PRZY KAŻDYM liczniku. Identyfikuje licznik i otwiera jego kartę.</td>
+</tr>
+</table>
+<h3>3.2 Kolory mediów — wskazówka wizualna</h3>
+<p>Po zeskanowaniu naklejki QR tło aktywnej karty zmienia kolor:</p>
+<table>
+<tr>
+<th>Kolor</th>
+<th>Medium</th>
+</tr>
+<tr>
+<td>🔴 Pomarańczowy</td>
+<td>Ciepło (GJ)</td>
+</tr>
+<tr>
+<td>🔵 Niebieski</td>
+<td>Woda (m³)</td>
+</tr>
+<tr>
+<td>⬜ Szary</td>
+<td>Prąd (kWh)</td>
+</tr>
+</table>
+<h3>3.3 Naklejki QR — generator i drukowanie</h3>
+<p>Generator naklejek QR dostępny jest pod adresem: fizar-sys.github.io/tools/liczniki/qr/</p>
+<p>Filtruj według medium (Ciepło/Woda/Prąd) i budynku (Biurowy/Handlowy)</p>
+<p>Kliknij „🖨 Drukuj naklejki&quot; — arkusz A4 z 20 naklejkami na stronie</p>
+<p>Wydrukuj, wytnij, zalaminuj i przyklej OBOK licznika (nie na urządzeniu)</p>
+<p>Aktualizacja danych liczników — jeśli zmienił się skład liczników (nowy najemca, wymiana licznika): kliknij „📂 Wczytaj Excel” i wgraj aktualny plik master Excel dla danej nieruchomości. Generator od razu pokaże zaktualizowane naklejki bez konieczności kontaktu z administratorem.</p>
+<p>Co widać na naklejce i skąd pochodzi:</p>
+<table>
+<tr>
+<th>Element na naklejce</th>
+<th>Kolumna Excel</th>
+<th>Wskazówka</th>
+<th>Kto zmienia</th>
+</tr>
+<tr>
+<td>Nazwa licznika</td>
+<td>B (Najemca)</td>
+<td>Krótka, jednoznaczna — max 3 słowa</td>
+<td>✅ Menedżer</td>
+</tr>
+<tr>
+<td>Medium + kolor</td>
+<td>Nazwa arkusza / ID</td>
+<td>Automatyczne — nie edytować</td>
+<td>🔒 Auto</td>
+</tr>
+<tr>
+<td>Budynek</td>
+<td>E lub D (ID enova)</td>
+<td>Automatyczne z identyfikatora</td>
+<td>🔒 Administrator</td>
+</tr>
+<tr>
+<td>Piętro · lokal</td>
+<td>E lub D (ID enova)</td>
+<td>Automatyczne z identyfikatora</td>
+<td>🔒 Administrator</td>
+</tr>
+<tr>
+<td>Kod QR</td>
+<td>E lub D (ID enova)</td>
+<td>Wymiana licznika = nowy ID = nowa naklejka</td>
+<td>🔒 Administrator</td>
+</tr>
+</table>
+<h3>3.4 Przygotowanie miesiąca — kod QR</h3>
+<p>Kod QR jest generowany przez skrypt Office Script po odświeżeniu danych. Na arkuszu QR_JSON_Helper znajduje się przycisk uruchamiający skrypt — wystarczy go kliknąć po każdym odświeżeniu pliku.</p>
+<p>Otwórz plik Excel z SharePoint</p>
+<p>Kliknij „Dane → Odśwież wszystko&quot; (Ctrl+Alt+F5)</p>
+<p>Przejdź do arkusza &quot;QR_JSON_Helper&quot; i kliknij przycisk „Generuj QR&quot; — skrypt pobierze aktualny URL i wstawi kod QR jako obraz. Kod QR jest teraz gotowy do skanowania.</p>
+<p>Pokaż kod QR z arkusza &quot;QR_JSON_Helper&quot; na ekranie lub wydrukuj — będzie potrzebny przy starcie sesji</p>
+<h3>3.5 Sesja odczytów — krok po kroku</h3>
+<p>Otwórz Fizar Genie na smartfonie: fizar-sys.github.io/tools/</p>
+<p>Zeskanuj kod QR z arkusza &quot;QR_JSON_Helper&quot; — załaduje poprzednie odczyty</p>
+<p>Sprawdź datę odczytu (aplikacja wypełnia automatycznie ostatni dzień poprzedniego miesiąca — data raportowa) i wpisz swoje imię</p>
+<p>Kliknij „Rozpocznij sesję&quot;</p>
+<p>Przy każdym liczniku: zeskanuj naklejkę QR → wpisz odczyt → zatwierdź</p>
+<p>Po zakończeniu: kliknij ··· → „Zakończ i wyślij&quot;</p>
+<h3>3.6 Wprowadzanie odczytu — szczegóły</h3>
+<p>Przy każdym liczniku:</p>
+<p>Poprzedni odczyt widoczny jest po prawej stronie karty, w kolorze żółtym — sprawdź czy bieżący odczyt jest wyższy.</p>
+<p>Różnica obliczana jest automatycznie. Zielona = poprawna, czerwona = odczyt mniejszy niż poprzedni (błąd!).</p>
+<p>Wprowadzanie ręczne — GŁÓWNA metoda. Zawsze działa niezależnie od warunków.</p>
+<p>OCR (przycisk 📷 OCR) — narzędzie pomocnicze, nigdy wymagane.</p>
+<p>Pomiń — użyj gdy licznik jest chwilowo niedostępny. Wróć w ciągu 2-3 dni i wyślij osobny plik JSON do tego samego folderu miesiąca.</p>
+<h3>3.7 Trzy sposoby wprowadzenia odczytu</h3>
+<table>
+<tr>
+<th>Metoda</th>
+<th>Kiedy używać</th>
+</tr>
+<tr>
+<td>⌨️ Ręczne wpisanie</td>
+<td>Zawsze — główna metoda, działa w każdych warunkach</td>
+</tr>
+<tr>
+<td>📷 OCR (zdjęcie)</td>
+<td>Gdy licznik jest dobrze oświetlony i dostępny</td>
+</tr>
+<tr>
+<td>⏭ Pomiń</td>
+<td>Gdy licznik chwilowo niedostępny — wróć później</td>
+</tr>
+</table>
+<h3>3.8 OCR — szczegóły techniczne</h3>
+<p>OCR próbuje odczytać wartość z wyświetlacza licznika na zdjęciu. Wynik zawsze trzeba sprawdzić — OCR jest pomocą, nie wymogiem.</p>
+<h3>3.9 Elastyczne daty odczytów</h3>
+<p>Odczyty nie muszą być wykonane dokładnie w ostatnim dniu miesiąca. System rozróżnia trzy daty:</p>
+<table>
+<tr>
+<th>Data</th>
+<th>Opis</th>
+</tr>
+<tr>
+<td>refDate</td>
+<td>Ostatni dzień poprzedniego miesiąca — data referencyjna odczytów poprzednich (wartość bazowa)</td>
+</tr>
+<tr>
+<td>readingDate</td>
+<td>Data raportowa — ostatni dzień miesiąca, za który zbierane są odczyty (np. 2026-03-31). Data księgowa, nagłówek kolumny w Excelu. Aplikacja wypełnia automatycznie.</td>
+</tr>
+<tr>
+<td>generatedAt</td>
+<td>Rzeczywista data i godzina wykonania obchodu — zapisywana automatycznie. Widoczna w nazwie pliku JSON jako timestamp fizyczny.</td>
+</tr>
+</table>
+<h3>3.10 Zakończenie sesji i wysyłka pliku danych</h3>
+<p>Po zakończeniu wprowadzania odczytów Genie generuje plik JSON z danymi sesji i umożliwia jego wysyłkę.</p>
+<p>Ekran zakończenia sesji</p>
+<p>Po kliknięciu ··· → „Zakończ i wyślij&quot; pojawia się ekran podsumowania z czterema przyciskami:</p>
+<table>
+<tr>
+<th>Przycisk</th>
+<th>Działanie</th>
+</tr>
+<tr>
+<td>📤 Wyślij plik</td>
+<td>Otwiera natywny dialog systemu — wybierz WhatsApp, Outlook lub inną aplikację</td>
+</tr>
+<tr>
+<td>⬇ Pobierz lokalnie</td>
+<td>Zapisuje plik JSON na urządzeniu (kopia zapasowa)</td>
+</tr>
+<tr>
+<td>← Kontynuuj sesję</td>
+<td>Powrót do wprowadzania odczytów (bez utraty danych)</td>
+</tr>
+<tr>
+<td>↺ Nowa sesja</td>
+<td>Rozpoczyna nową sesję od zera</td>
+</tr>
+</table>
+<p>Adres docelowy — skrzynka zbiorcza</p>
+<p>Plik JSON należy wysłać na adres:</p>
+<p>testsm@fizar.pl</p>
+<p>ℹ️  Temat wiadomości nie ma znaczenia — Power Automate przetwarza każdą wiadomość z załącznikiem JSON przychodzącą na tę skrzynkę.</p>
+<p>Co się dzieje z plikiem po wysyłce</p>
+<p>Po otrzymaniu wiadomości Power Automate automatycznie:</p>
+<p>1   Odbiera wiadomość  —  skrzynka zbiorcza testsm@fizar.pl</p>
+<p>2   Rozpakowuje załącznik JSON</p>
+<p>3   Odczytuje z JSON: property i readingDate</p>
+<p>4   Tworzy folder okresu jeśli nie istnieje</p>
+<p>5   Zapisuje plik na SharePoint  —  właściwa ścieżka automatycznie</p>
+<p>Struktura folderów na SharePoint</p>
+<table>
+<tr>
+<th>Ścieżka</th>
+<th>Opis</th>
+</tr>
+<tr>
+<td>Shared Documents/General/Media - Odczyty/</td>
+<td>Folder główny odczytów</td>
+</tr>
+<tr>
+<td>/GRUDZ/</td>
+<td>Folder nieruchomości Grudziądz</td>
+</tr>
+<tr>
+<td>/ZIELON/</td>
+<td>Folder nieruchomości Zielona Góra</td>
+</tr>
+<tr>
+<td>/MALBO/</td>
+<td>Folder nieruchomości Malbork</td>
+</tr>
+<tr>
+<td>/WADOW/</td>
+<td>Folder nieruchomości Wadowice</td>
+</tr>
+<tr>
+<td>/GRUDZ/2026-03/</td>
+<td>Folder okresu — tworzony automatycznie</td>
+</tr>
+</table>
+<p>Nazwa pliku na SharePoint</p>
+<p>Każdy plik otrzymuje unikalną nazwę z timestampem:</p>
+<p>odczyty_GRUDZ_2026-03-31_2026-04-01T09-00-00.json</p>
+<p>ℹ️  Dzięki timestampowi w nazwie — wielokrotne wysłanie tego samego pliku nie tworzy konfliktów. Plik zostaje nadpisany bez pytania.</p>
+<p>Po zebraniu wszystkich plików JSON w folderze miesiąca na SharePoint — administrator uruchamia dwuetapowe przetwarzanie w pliku Excel master.</p>
+<h3>3.11 Przetwarzanie plików JSON — Power Query i Office Script</h3>
+<p>Po zebraniu wszystkich plików JSON sesji w folderze miesiąca na SharePoint administrator uruchamia dwuetapowe przetwarzanie w pliku Excel master.</p>
+<p>Etap 1 — Power Query: scalanie plików JSON</p>
+<p>Otwórz plik Excel master z SharePoint. Ustaw parametr Period (np. 2026-03) w arkuszu QR_Odczyty i kliknij Dane → Odśwież wszystko (Ctrl+Alt+F5) — lub użyj przycisku „Odśwież dane&quot; na arkuszu QR_Odczyty jeśli jest dostępny. Power Query automatycznie: odczytuje wszystkie pliki .json z folderu okresu, scala je w jedną tabelę, deduplikuje — dla każdego licznika zachowuje najnowszy odczyt (wg generatedAt), wypełnia tabelę ParsedFiles w arkuszu QR_Odczyty — 80 wierszy, jeden na licznik.</p>
+<p>Etap 2 — Office Script: zapis do arkuszy master</p>
+<p>Po odświeżeniu Power Query uruchom skrypt DistributeOdczyty — przez zakładkę Automate → All Scripts lub przez przycisk „Importuj do arkuszy&quot; na arkuszu QR_Odczyty jeśli jest dostępny. Skrypt: odczytuje readingDate z tabeli ParsedFiles (np. 2026-03-31), sprawdza czy taka kolumna już istnieje w arkuszach Cieplo / Woda / Prad (ochrona przed duplikatami), dodaje nową kolumnę z datą 31.03.2026 jako nagłówek, wpisuje odczyty dla każdego licznika — wg identyfikatora RealEstate:Identyfikator, rozszerza smart-tabele automatycznie. Wynik: komórka statusu w QR_Odczyty zmienia kolor na zielony i pokazuje DONE 31.03.2026 | written=80 | missing=0.</p>
+<p>Logika wielu sesji (multi-visit)</p>
+<p>Jeśli w folderze miesiąca jest kilka plików JSON (np. główna sesja + uzupełnienie pominiętych liczników): Power Query scala wszystkie pliki i dla każdego licznika zachowuje najnowszy odczyt wg generatedAt. Liczniki zawsze zamknięte (np. główne liczniki przy stacji transformatorowej) mogą nie mieć odczytu w żadnym pliku — skrypt zapisuje pustą komórkę (nie błąd). Wynik zawsze zawiera dokładnie tyle wierszy ile liczników jest w arkuszu master.</p>
+<p>Skrypt działa zarówno w Excel Online jak i w Excel Desktop (wersja 2210+). Plik musi być przechowywany na SharePoint lub OneDrive — nie lokalnie.</p>
+<h3>3.12 Szybka ściąga — Liczniki</h3>
+<table>
+<tr>
+<th>Krok</th>
+<th>Działanie</th>
+</tr>
+<tr>
+<td>1. Przygotowanie</td>
+<td>Odśwież PQ w Excel → pobierz QR z arkusza &quot;QR_JSON_Helper&quot;</td>
+</tr>
+<tr>
+<td>2. Start Genie</td>
+<td>Otwórz Genie na telefonie → zeskanuj QR → sprawdź datę raportową (auto) → wpisz imię → Start</td>
+</tr>
+<tr>
+<td>3. Odczyty</td>
+<td>Przy każdym liczniku: skanuj naklejkę QR → wpisz → Zatwierdź</td>
+</tr>
+<tr>
+<td>4. Zakończenie</td>
+<td>··· → Zakończ i wyślij → 📤 Wyślij plik → wybierz Outlook/WhatsApp</td>
+</tr>
+<tr>
+<td>5. Adres wysyłki</td>
+<td>testsm@fizar.pl</td>
+</tr>
+<tr>
+<td>6. Rezultat</td>
+<td>Plik automatycznie trafia na SharePoint do właściwego folderu</td>
+</tr>
+</table>
+<div class="lang-divider" id="lang-ua"><span>🇺🇦 Українська</span></div>
+<h2 class="section-h" id="вступ_—_fizar_genie">Вступ — Fizar Genie</h2>
+<p>Fizar Genie — це набір браузерних інструментів для щоденної роботи керуючого нерухомістю. Всі інструменти працюють у браузері — без встановлення, без входу в систему.</p>
+<p>Адреса доступу:</p>
+<h2 class="section-h" id="1_вимоги_про_оплату">1. Вимоги про оплату</h2>
+<h3>1.1 Мета інструменту</h3>
+<p>Інструмент автоматично генерує листи — Вимоги про оплату — на основі звіту про структуру заборгованості, експортованого з enova365.</p>
+<h3>1.2 Підготовка звіту Aging з enova365</h3>
+<p>Перед запуском інструменту необхідно експортувати звіт із системи enova365:</p>
+<p>Звіт: Struktura wiekowa per saldo (Структура заборгованості)</p>
+<p>Документи: Wszystkie (Усі)</p>
+<p>Група: Sprzedaż (Продажі)</p>
+<p>Формат експорту: PDF</p>
+<h3>1.3 Крок за кроком</h3>
+<p>Відкрийте інструмент Wezwania у браузері</p>
+<p>Завантажте PDF-файл зі звітом Aging</p>
+<p>Перевірте згенеровані вимоги — окремо для кожного орендаря</p>
+<p>Завантажте документи ZIP або друкуйте безпосередньо</p>
+<h3>1.4 Статуси орендарів</h3>
+<table>
+<tr>
+<th>Статус</th>
+<th>Значення</th>
+</tr>
+<tr>
+<td>🟢 Зелений</td>
+<td>Без заборгованості — без вимоги</td>
+</tr>
+<tr>
+<td>🟡 Жовтий</td>
+<td>Заборгованість &lt; 30 днів — інформування</td>
+</tr>
+<tr>
+<td>🔴 Червоний</td>
+<td>Заборгованість &gt; 30 днів — вимога про оплату</td>
+</tr>
+</table>
+<h3>1.5 Практичні зауваження</h3>
+<p>Поле адреси в листі містить placeholder «adres do korespondencji» — заповніть вручну перед відправкою.</p>
+<p>Реферальний номер листа: FIZAR/ОБ&#x27;ЄКТ/WZ/NNN/MM/РРРР — генерується автоматично.</p>
+<p>Заголовок переказу містить номери рахунків-фактур із таблиці.</p>
+<p>Інструмент не зберігає даних — кожен сеанс починається з нуля.</p>
+<h2 class="section-h" id="2_розрахунок_service_charge_(s">2. Розрахунок Service Charge (SCH)</h2>
+<h3>2.1 Мета інструменту</h3>
+<p>Інструмент генерує супровідні листи та додатки до річного розрахунку спільних витрат (Service Charge) для кожного орендаря.</p>
+<h3>2.2 Процес роботи — ролі та відповідальність</h3>
+<p>Розрахунок SCH потребує співпраці двох ролей:</p>
+<table>
+<tr>
+<th>Роль</th>
+<th>Завдання</th>
+</tr>
+<tr>
+<td>Керуючий нерухомістю</td>
+<td>Готує файл Excel з витратами і платежами за рік, надсилає на перевірку, після підтвердження — генерує документи</td>
+</tr>
+<tr>
+<td>Адміністратор (Fizar)</td>
+<td>Перевіряє дані з бухгалтерськими документами (GLC), підтверджує готовність файлу та повертає керуючому</td>
+</tr>
+</table>
+<h3>2.3 Необхідний файл Excel</h3>
+<p>Файл Excel повинен містити такі аркуші:</p>
+<p>rozliczenie załączniki — розрахунковий шаблон з вибором орендаря в комірці A4</p>
+<p>Najemcy — список орендарів з прапором SC в колонці H</p>
+<p>ZaliczkiWpłaty — щомісячні внески авансів SC</p>
+<p>Podsumowanie 2025 — результати річного розрахунку</p>
+<p>Nieruchomość (необов&#x27;язково) — дані керуючого: ім&#x27;я, телефон, e-mail, місто</p>
+<h3>2.4 Крок за кроком</h3>
+<p>Підготуйте файл Excel відповідно до необхідної структури</p>
+<p>Надішліть файл адміністратору на перевірку</p>
+<p>Після підтвердження — відкрийте інструмент SCH</p>
+<p>Завантажте перевірений файл Excel</p>
+<p>Генеруйте документи для всіх орендарів одним кліком</p>
+<p>Завантажте ZIP з комплектом листів</p>
+<h3>2.5 Вміст документів</h3>
+<p>Супровідний лист (стор. 1, вертикально) — сума сплачена, нарахована і результат: переплата або недоплата. Зелений = повернення орендарю, червоний = доплата.</p>
+<p>Додаток №1 (стор. 2+, горизонтально) — повний місячний розрахунок у 4 частинах: витрати центру, платежі орендаря, витрати індивідуальні, підсумок.</p>
+<h2 class="section-h" id="3_показання_лічильників">3. Показання лічильників</h2>
+<h3>3.1 Система QR — ідея та логіка</h3>
+<p>Система ідентифікації лічильників базується на QR-кодах, наклеєних поруч з кожним лічильником. Кожен QR-код містить унікальний ідентифікатор лічильника відповідно до системи enova365 (напр. LICZ_W_GRUDZ_O-2-B0006).</p>
+<p>Два типи QR-кодів у системі:</p>
+<table>
+<tr>
+<th>Тип QR-коду</th>
+<th>Застосування</th>
+</tr>
+<tr>
+<td>QR з аркуша &quot;QR_JSON_Helper&quot;</td>
+<td>Використовується РАЗ на початку сеансу. Завантажує попередні показання до застосунку.</td>
+</tr>
+<tr>
+<td>QR-наклейка на лічильнику</td>
+<td>Використовується БІЛЯ КОЖНОГО лічильника. Ідентифікує лічильник і відкриває його картку.</td>
+</tr>
+</table>
+<h3>3.2 Кольори ресурсів</h3>
+<p>Після сканування QR-наклейки фон активної картки змінює колір:</p>
+<table>
+<tr>
+<th>Колір</th>
+<th>Ресурс</th>
+</tr>
+<tr>
+<td>🔴 Помаранчевий</td>
+<td>Теплопостачання (GJ)</td>
+</tr>
+<tr>
+<td>🔵 Блакитний</td>
+<td>Водопостачання (m³)</td>
+</tr>
+<tr>
+<td>⬜ Сірий</td>
+<td>Електроенергія (kWh)</td>
+</tr>
+</table>
+<h3>3.3 Наклейки QR — генератор і друк</h3>
+<p>Генератор наклейок QR доступний за адресою: fizar-sys.github.io/tools/liczniki/qr/</p>
+<p>Фільтруйте за ресурсом (Тепло/Вода/Електрика) та будівлею (Офісна/Торгова)</p>
+<p>Натисніть «🖨 Drukuj naklejki» — аркуш A4 з 20 наклейками на сторінці</p>
+<p>Надрукуйте, виріжте, залімінуйте та наклейте ПОРУЧ з лічильником (не на пристрій)</p>
+<p>Оновлення даних лічильників — якщо змінився склад лічильників (новий орендар, заміна лічильника): натисніть „📂 Wczytaj Excel” і завантажте актуальний файл Excel master для потрібної нерухомості. Генератор одразу покаже оновлені наклейки без необхідності звертатися до адміністратора.</p>
+<p>Що відображається на наклейці і звідки береться:</p>
+<table>
+<tr>
+<th>Елемент на наклейці</th>
+<th>Колонка Excel</th>
+<th>Порада</th>
+<th>Хто змінює</th>
+</tr>
+<tr>
+<td>Назва лічильника</td>
+<td>B (Najemca)</td>
+<td>Коротко, зрозуміло — макс 3 слова</td>
+<td>✅ Менеджер</td>
+</tr>
+<tr>
+<td>Ресурс + колір</td>
+<td>Назва аркуша / ID</td>
+<td>Автоматично — не редагувати</td>
+<td>🔒 Авто</td>
+</tr>
+<tr>
+<td>Будівля</td>
+<td>E або D (ID enova)</td>
+<td>Автоматично з ідентифікатора</td>
+<td>🔒 Адміністратор</td>
+</tr>
+<tr>
+<td>Поверх · приміщення</td>
+<td>E або D (ID enova)</td>
+<td>Автоматично з ідентифікатора</td>
+<td>🔒 Адміністратор</td>
+</tr>
+<tr>
+<td>QR-код</td>
+<td>E або D (ID enova)</td>
+<td>Заміна лічильника = новий ID = нова наклейка</td>
+<td>🔒 Адміністратор</td>
+</tr>
+</table>
+<h3>3.4 Підготовка місяця — QR-код</h3>
+<p>QR-код генерується скриптом Office Script після оновлення даних. На аркуші QR_JSON_Helper є кнопка запуску скрипту — достатньо натиснути її після кожного оновлення файлу.</p>
+<p>Відкрийте файл Excel з SharePoint</p>
+<p>Натисніть «Дані → Оновити все» (Ctrl+Alt+F5)</p>
+<p>Перейдіть до аркуша &quot;QR_JSON_Helper&quot; і натисніть кнопку «Generuj QR» — скрипт завантажить актуальний URL і вставить QR-код як зображення. QR-код готовий до сканування.</p>
+<p>Покажіть QR-код з аркуша &quot;QR_JSON_Helper&quot; на екрані або роздрукуйте — знадобиться на початку сеансу</p>
+<h3>3.5 Сеанс показань — крок за кроком</h3>
+<p>Відкрийте Fizar Genie на смартфоні: fizar-sys.github.io/tools/</p>
+<p>Відскануйте QR-код з аркуша &quot;QR_JSON_Helper&quot; — завантажить попередні показання</p>
+<p>Перевірте дату показань (застосунок автоматично підставляє останній день попереднього місяця — дата звітності) та введіть своє ім’я</p>
+<p>Натисніть «Rozpocznij sesję»</p>
+<p>Біля кожного лічильника: скануйте QR-наклейку → вводьте показання → підтверджуйте</p>
+<p>Після завершення: натисніть ··· → «Zakończ i wyślij»</p>
+<h3>3.6 Введення показань — деталі</h3>
+<p>Біля кожного лічильника:</p>
+<p>Попереднє показання відображається жовтим кольором праворуч — перевірте чи поточне показання вище.</p>
+<p>Різниця розраховується автоматично. Зелена = правильна, червона = показання менше попереднього (помилка!).</p>
+<p>Ручне введення — ГОЛОВНИЙ метод. Завжди працює незалежно від умов.</p>
+<p>OCR (кнопка 📷 OCR) — допоміжний інструмент, ніколи не обов&#x27;язковий.</p>
+<p>Пропустити — використовуйте коли лічильник тимчасово недоступний. Поверніться через 2-3 дні і надішліть окремий JSON до тієї ж папки місяця.</p>
+<h3>3.7 Три способи введення показань</h3>
+<table>
+<tr>
+<th>Метод</th>
+<th>Коли використовувати</th>
+</tr>
+<tr>
+<td>⌨️ Ручне введення</td>
+<td>Завжди — головний метод, працює в будь-яких умовах</td>
+</tr>
+<tr>
+<td>📷 OCR (фото)</td>
+<td>Коли лічильник добре освітлений і доступний</td>
+</tr>
+<tr>
+<td>⏭ Пропустити</td>
+<td>Коли лічильник тимчасово недоступний — повернутися пізніше</td>
+</tr>
+</table>
+<h3>3.8 OCR — технічні деталі</h3>
+<p>OCR намагається зчитати значення з дисплея лічильника на фотографії. Результат завжди потрібно перевірити — OCR є допомогою, а не вимогою.</p>
+<h3>3.9 Гнучкі дати показань</h3>
+<p>Показання не обов&#x27;язково знімати в останній день місяця. Система розрізняє три дати:</p>
+<table>
+<tr>
+<th>Дата</th>
+<th>Опис</th>
+</tr>
+<tr>
+<td>refDate</td>
+<td>Останній день попереднього місяця — референсна дата попередніх показань (базове значення)</td>
+</tr>
+<tr>
+<td>readingDate</td>
+<td>Дата звітності — останній день місяця, за який збираються показання (напр. 2026-03-31). Бухгалтерська дата, заголовок колонки в Excel. Застосунок заповнює автоматично.</td>
+</tr>
+<tr>
+<td>generatedAt</td>
+<td>Реальна дата і час проведення обходу — записується автоматично. Відображається у назві JSON-файлу як фізична мітка часу.</td>
+</tr>
+</table>
+<h3>3.10 Завершення сесії та надсилання файлу даних</h3>
+<p>Після завершення введення показань Genie генерує JSON-файл з даними сесії та надає можливість його надіслати.</p>
+<p>Екран завершення сесії</p>
+<p>Після натискання ··· → «Zakończ i wyślij» з&#x27;являється екран підсумку з чотирма кнопками:</p>
+<table>
+<tr>
+<th>Кнопка</th>
+<th>Дія</th>
+</tr>
+<tr>
+<td>📤 Wyślij plik</td>
+<td>Відкриває нативний діалог системи — оберіть WhatsApp, Outlook або інший додаток</td>
+</tr>
+<tr>
+<td>⬇ Pobierz lokalnie</td>
+<td>Зберігає JSON-файл на пристрої (резервна копія)</td>
+</tr>
+<tr>
+<td>← Kontynuuj sesję</td>
+<td>Повернення до введення показань (без втрати даних)</td>
+</tr>
+<tr>
+<td>↺ Nowa sesja</td>
+<td>Починає новий сеанс з нуля</td>
+</tr>
+</table>
+<p>Цільова адреса — загальна скринька</p>
+<p>JSON-файл необхідно надіслати на адресу:</p>
+<p>testsm@fizar.pl</p>
+<p>ℹ️  Тема листа не має значення — Power Automate обробляє кожен лист із JSON-вкладенням, що надходить на цю скриньку.</p>
+<p>Що відбувається з файлом після надсилання</p>
+<p>Після отримання листа Power Automate автоматично:</p>
+<p>1   Отримує лист  —  загальна скринька testsm@fizar.pl</p>
+<p>2   Розпаковує вкладення JSON</p>
+<p>3   Зчитує з JSON: property та readingDate</p>
+<p>4   Створює папку періоду якщо не існує</p>
+<p>5   Зберігає файл на SharePoint  —  правильний шлях визначається автоматично</p>
+<p>Структура папок на SharePoint</p>
+<table>
+<tr>
+<th>Шлях</th>
+<th>Опис</th>
+</tr>
+<tr>
+<td>Shared Documents/General/Media - Odczyty/</td>
+<td>Головна папка показань</td>
+</tr>
+<tr>
+<td>/GRUDZ/</td>
+<td>Папка нерухомості Grudziądz</td>
+</tr>
+<tr>
+<td>/ZIELON/</td>
+<td>Папка нерухомості Zielona Góra</td>
+</tr>
+<tr>
+<td>/MALBO/</td>
+<td>Папка нерухомості Malbork</td>
+</tr>
+<tr>
+<td>/WADOW/</td>
+<td>Папка нерухомості Wadowice</td>
+</tr>
+<tr>
+<td>/GRUDZ/2026-03/</td>
+<td>Папка періоду — створюється автоматично</td>
+</tr>
+</table>
+<p>Назва файлу на SharePoint</p>
+<p>Кожен файл отримує унікальну назву з мітками часу:</p>
+<p>odczyty_GRUDZ_2026-03-31_2026-04-01T09-00-00.json</p>
+<p>ℹ️  Завдяки мітці часу в назві — повторне надсилання того самого файлу не створює конфліктів. Файл перезаписується без запитань.</p>
+<p>Після збору всіх JSON-файлів сесії у папці місяця на SharePoint адміністратор запускає двоетапну обробку у файлі Excel master.</p>
+<h3>3.11 Обробка JSON-файлів — Power Query та Office Script</h3>
+<p>Після збору всіх JSON-файлів сесії у папці місяця на SharePoint адміністратор запускає двоетапну обробку у файлі Excel master.</p>
+<p>Етап 1 — Power Query: злиття JSON-файлів</p>
+<p>Відкрийте файл Excel master з SharePoint. Встановіть параметр Period (напр. 2026-03) і натисніть Дані → Оновити все (Ctrl+Alt+F5) — або використайте кнопку «Оновити дані» на аркуші QR_Odczyty якщо вона є. Power Query автоматично: зчитує всі .json-файли з папки періоду, зливає їх в одну таблицю, дедуплікує — для кожного лічильника зберігає найновіше показання (за generatedAt), заповнює таблицю ParsedFiles в аркуші QR_Odczyty — 80 рядків, один на лічильник.</p>
+<p>Етап 2 — Office Script: запис до аркушів master</p>
+<p>Після оновлення Power Query запустіть скрипт DistributeOdczyty — через вкладку Automate → All Scripts або через кнопку «Імпортувати до аркушів» на аркуші QR_Odczyty якщо вона є. Скрипт: зчитує readingDate з таблиці ParsedFiles (напр. 2026-03-31), перевіряє чи така колонка вже існує в аркушах Cieplo / Woda / Prad (захист від дублікатів), додає нову колонку з датою 31.03.2026 як заголовок, вносить показання для кожного лічильника за RealEstate:Identyfikator, розширює смарт-таблиці автоматично. Результат: комірка статусу в QR_Odczyty зафарбовується зеленим і показує DONE 31.03.2026 | written=80 | missing=0.</p>
+<p>Логіка багаторазових сесій (multi-visit)</p>
+<p>Якщо у папці місяця є кілька JSON-файлів (напр. головна сесія + доповнення пропущених лічильників): Power Query зливає всі файли і для кожного лічильника зберігає найновішє показання за generatedAt. Лічильники що завжди замкнені (напр. головні лічильники біля трансформаторної підстанції) можуть не мати показання в жодному файлі — скрипт запише порожню комірку (не помилку). Результат завжди містить точно стільки рядків скільки лічильників є в аркуші master.</p>
+<p>Скрипт працює як в Excel Online, так і в Excel Desktop (версія 2210+). Файл має зберігатися на SharePoint або OneDrive — не локально.</p>
+<h3>3.12 Коротка шпаргалка — Показання</h3>
+<table>
+<tr>
+<th>Крок</th>
+<th>Дія</th>
+</tr>
+<tr>
+<td>1. Підготовка</td>
+<td>Оновіть PQ в Excel → отримайте QR з аркуша &quot;QR_JSON_Helper&quot;</td>
+</tr>
+<tr>
+<td>2. Старт Genie</td>
+<td>Відкрийте Genie на телефоні → скануйте QR → перевірте дату звітності (авто) → введіть ім’я → Старт</td>
+</tr>
+<tr>
+<td>3. Показання</td>
+<td>Біля кожного лічильника: скануйте QR-наклейку → вводьте → Підтвердіть</td>
+</tr>
+<tr>
+<td>4. Завершення</td>
+<td>··· → Zakończ i wyślij → 📤 Wyślij plik → оберіть Outlook/WhatsApp</td>
+</tr>
+<tr>
+<td>5. Адреса надсилання</td>
+<td>testsm@fizar.pl</td>
+</tr>
+<tr>
+<td>6. Результат</td>
+<td>Файл автоматично потрапляє на SharePoint у відповідну папку</td>
+</tr>
+</table>
+<p>FIZAR Sp. z o.o.  ·  NIP: 5272771211  ·  Fizar Genie v3.0  ·  2026</p>
+  </div>
+</main>
+
+<script>
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+  document.getElementById('overlay').classList.toggle('show');
+}
+
+// Active TOC highlighting on scroll
+const headings = document.querySelectorAll('h2.section-h, h3, .lang-divider');
+const tocLinks = document.querySelectorAll('.toc-item');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      tocLinks.forEach(l => {
+        l.classList.toggle('active', l.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, { rootMargin: '-10% 0px -80% 0px' });
+
+headings.forEach(h => { if (h.id) observer.observe(h); });
+
+// Close sidebar on link click (mobile)
+tocLinks.forEach(l => l.addEventListener('click', () => {
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+}));
+</script>
+</body>
+</html>
