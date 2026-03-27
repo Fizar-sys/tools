@@ -1196,26 +1196,36 @@ window.stopQRScan = stopQRScan;
 function processQRData(raw) {
   try {
     const data = JSON.parse(raw);
-    if (!data.d || !data.v || !Array.isArray(data.v)) {
+    if (!data.d || !data.p || !data.v || typeof data.v !== 'object' || Array.isArray(data.v)) {
       throw new Error('Nieprawidłowy format QR');
     }
 
-    // "v" is positional array — order matches Cieplo→Prad→Woda sheet order
-    // which is identical to METERS_DATA order in this file
+    // "v" is key-value object with compressed keys: {U}_{REST}
+    // e.g. "C_CWWII-0-H0001" → LICZ_C_ZIELON_CWWII-0-H0001
+    // Decompression: prepend "LICZ_" + U + "_" + PROP + "_" to REST
+    // PROP comes from data.p
+    const prop = data.p;
+
     const rd = data.d || '';
     if (rd.includes('.')) {
       const p = rd.split('.');
       refDate = p.length === 3 ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : rd;
     } else { refDate = rd; }
+
     prevReadings = {};
-    METERS.forEach((m, i) => {
-      if (data.v[i] !== undefined && data.v[i] !== null) {
-        prevReadings[m.id] = data.v[i];
+    METERS.forEach(m => {
+      // Compress full ID to key: LICZ_C_ZIELON_CWWII-0-H0001 → C_CWWII-0-H0001
+      const parts = m.id.split('_');           // ["LICZ","C","ZIELON","CWWII-0-H0001"]
+      const u    = parts[1];                   // "C"
+      const rest = parts.slice(3).join('_');   // "CWWII-0-H0001"
+      const key  = u + '_' + rest;             // "C_CWWII-0-H0001"
+      if (data.v[key] !== undefined && data.v[key] !== null) {
+        prevReadings[m.id] = data.v[key];
       }
     });
 
     const count = Object.keys(prevReadings).length;
-    document.getElementById('refDateBadge').textContent = refDate;
+    document.getElementById('refDateBadge').textContent = data.d;
     document.getElementById('refCountBadge').textContent = count;
     document.getElementById('uploadSuccess').style.display = 'block';
 
@@ -1224,7 +1234,7 @@ function processQRData(raw) {
     btn.innerHTML = `<span style="font-size:24px">✅</span>
       <div>
         <div style="font-weight:600;font-size:15px">QR zeskanowany pomyślnie</div>
-        <div style="font-size:12px;opacity:.7">${count} odczytów z dnia ${refDate}</div>
+        <div style="font-size:12px;opacity:.7">${count} odczytów z dnia ${data.d}</div>
       </div>`;
 
     checkCanStart();
