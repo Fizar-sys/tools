@@ -360,7 +360,7 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>QR z arkusza &quot;QR_JSON_Helper&quot;</td>
-<td>Używany RAZ na początku sesji. Ładuje poprzednie odczyty do aplikacji.</td>
+<td>Trzy kody QR — osobny dla Ciepła, Prądu i Wody. Skanowany RAZ na początku każdej sesji. Ładuje poprzednie odczyty i automatycznie wyświetla tylko liczniki danego medium.</td>
 </tr>
 <tr>
 <td>Naklejka QR na liczniku</td>
@@ -433,14 +433,14 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 </table>
 <h3 id="3_4_Przygotowanie_miesiąca___kod_QR">3.4 Przygotowanie miesiąca — kod QR</h3>
-<p>Kod QR jest generowany przez skrypt Office Script po odświeżeniu danych. Na arkuszu QR_JSON_Helper znajduje się przycisk uruchamiający skrypt — wystarczy go kliknąć po każdym odświeżeniu pliku.</p>
+<p>Trzy kody QR są generowane przez skrypt Office Script po odświeżeniu danych — osobny dla Ciepła, Prądu i Wody. Na arkuszu QR_JSON_Helper znajduje się przycisk uruchamiający skrypt — wystarczy go kliknąć raz po każdym odświeżeniu pliku.</p>
 <p>Otwórz plik Excel z SharePoint</p>
 <p>Kliknij „Dane → Odśwież wszystko&quot; (Ctrl+Alt+F5)</p>
-<p>Przejdź do arkusza &quot;QR_JSON_Helper&quot; i kliknij przycisk „Generuj QR&quot; — skrypt pobierze aktualny URL i wstawi kod QR jako obraz. Kod QR jest teraz gotowy do skanowania.</p>
-<p>Pokaż kod QR z arkusza &quot;QR_JSON_Helper&quot; na ekranie lub wydrukuj — będzie potrzebny przy starcie sesji</p>
+<p>Przejdź do arkusza "QR_JSON_Helper" i kliknij przycisk „Generuj QR" — skrypt pobierze aktualne URL i wstawi trzy kody QR jako obrazy (Ciepło / Prąd / Woda) obok siebie. Wszystkie trzy kody QR są teraz gotowe do skanowania.</p>
+<p>Wydrukuj arkusz "QR_JSON_Helper" lub pokaż na ekranie monitora — trzy kody QR będą potrzebne przy każdej sesji odczytów (jeden kod = jedna sesja dla jednego medium)</p>
 <h3 id="3_5_Sesja_odczytów___krok_po_kroku">3.5 Sesja odczytów — krok po kroku</h3>
 <p>Otwórz Fizar Genie na smartfonie: fizar-sys.github.io/tools/</p>
-<p>Zeskanuj kod QR z arkusza &quot;QR_JSON_Helper&quot; — załaduje poprzednie odczyty</p>
+<p>Zeskanuj kod QR dla wybranego medium z arkusza "QR_JSON_Helper" — aplikacja automatycznie wybierze nieruchomość i wyświetli tylko liczniki tego medium (np. skan kodu Ciepło → lista liczników ciepła)</p>
 <p>Sprawdź datę odczytu (aplikacja wypełnia automatycznie ostatni dzień poprzedniego miesiąca — data raportowa) i wpisz swoje imię</p>
 <p>Kliknij „Rozpocznij sesję&quot;</p>
 <p>Przy każdym liczniku: zeskanuj naklejkę QR → wpisz odczyt → zatwierdź</p>
@@ -521,11 +521,11 @@ tr:nth-child(even) td { background: #fafbfd; }
 </table>
 <p>Adres docelowy — skrzynka zbiorcza</p>
 <p>Plik JSON należy wysłać na adres:</p>
-<p>testsm@fizar.pl</p>
+<p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="e195849295928ca187889b8093cf918d">[email&#160;protected]</a></p>
 <p>ℹ️  Temat wiadomości nie ma znaczenia — Power Automate przetwarza każdą wiadomość z załącznikiem JSON przychodzącą na tę skrzynkę.</p>
 <p>Co się dzieje z plikiem po wysyłce</p>
 <p>Po otrzymaniu wiadomości Power Automate automatycznie:</p>
-<p>1   Odbiera wiadomość  —  skrzynka zbiorcza testsm@fizar.pl</p>
+<p>1   Odbiera wiadomość  —  skrzynka zbiorcza <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="97e3f2e4e3e4fad7f1feedf6e5b9e7fb">[email&#160;protected]</a></p>
 <p>2   Rozpakowuje załącznik JSON</p>
 <p>3   Odczytuje z JSON: property i readingDate</p>
 <p>4   Tworzy folder okresu jeśli nie istnieje</p>
@@ -583,11 +583,11 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>1. Przygotowanie</td>
-<td>Odśwież PQ w Excel → pobierz QR z arkusza &quot;QR_JSON_Helper&quot;</td>
+<td>Odśwież PQ w Excel → kliknij „Generuj QR" → wydrukuj arkusz "QR_JSON_Helper" z 3 kodami QR</td>
 </tr>
 <tr>
 <td>2. Start Genie</td>
-<td>Otwórz Genie na telefonie → zeskanuj QR → sprawdź datę raportową (auto) → wpisz imię → Start</td>
+<td>Otwórz Genie na telefonie → zeskanuj QR dla wybranego medium (Ciepło / Prąd / Woda) → aplikacja automatycznie wybiera nieruchomość i pokazuje tylko liczniki tego medium → sprawdź datę raportową (auto) → wpisz imię → Start</td>
 </tr>
 <tr>
 <td>3. Odczyty</td>
@@ -599,7 +599,7 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>5. Adres wysyłki</td>
-<td>testsm@fizar.pl</td>
+<td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="d4a0b1a7a0a7b994b2bdaeb5a6faa4b8">[email&#160;protected]</a></td>
 </tr>
 <tr>
 <td>6. Rezultat</td>
@@ -695,7 +695,7 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>QR з аркуша &quot;QR_JSON_Helper&quot;</td>
-<td>Використовується РАЗ на початку сеансу. Завантажує попередні показання до застосунку.</td>
+<td>Три QR-коди — окремий для Тепла, Електрики та Води. Сканується РАЗ на початку кожного сеансу. Завантажує попередні показання і автоматично відображає лише лічильники цього ресурсу.</td>
 </tr>
 <tr>
 <td>QR-наклейка на лічильнику</td>
@@ -768,14 +768,14 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 </table>
 <h3 id="3_4_Підготовка_місяця___QR_код">3.4 Підготовка місяця — QR-код</h3>
-<p>QR-код генерується скриптом Office Script після оновлення даних. На аркуші QR_JSON_Helper є кнопка запуску скрипту — достатньо натиснути її після кожного оновлення файлу.</p>
+<p>Три QR-коди генеруються скриптом Office Script після оновлення даних — окремий для Тепла, Електрики та Води. На аркуші QR_JSON_Helper є кнопка запуску скрипту — достатньо натиснути її один раз після кожного оновлення файлу.</p>
 <p>Відкрийте файл Excel з SharePoint</p>
 <p>Натисніть «Дані → Оновити все» (Ctrl+Alt+F5)</p>
-<p>Перейдіть до аркуша &quot;QR_JSON_Helper&quot; і натисніть кнопку «Generuj QR» — скрипт завантажить актуальний URL і вставить QR-код як зображення. QR-код готовий до сканування.</p>
-<p>Покажіть QR-код з аркуша &quot;QR_JSON_Helper&quot; на екрані або роздрукуйте — знадобиться на початку сеансу</p>
+<p>Перейдіть до аркуша "QR_JSON_Helper" і натисніть кнопку «Generuj QR» — скрипт завантажить актуальні URL і вставить три QR-коди як зображення (Тепло / Електрика / Вода) поруч. Всі три QR-коди готові до сканування.</p>
+<p>Роздрукуйте аркуш "QR_JSON_Helper" або покажіть на екрані монітора — три QR-коди знадобляться при кожному сеансі показань (один код = один сеанс для одного ресурсу)</p>
 <h3 id="3_5_Сеанс_показань___крок_за_кроком">3.5 Сеанс показань — крок за кроком</h3>
 <p>Відкрийте Fizar Genie на смартфоні: fizar-sys.github.io/tools/</p>
-<p>Відскануйте QR-код з аркуша &quot;QR_JSON_Helper&quot; — завантажить попередні показання</p>
+<p>Відскануйте QR-код для потрібного ресурсу з аркуша "QR_JSON_Helper" — застосунок автоматично обере нерухомість і відобразить лише лічильники цього ресурсу (напр. сканування коду Тепло → список лічильників тепла)</p>
 <p>Перевірте дату показань (застосунок автоматично підставляє останній день попереднього місяця — дата звітності) та введіть своє ім’я</p>
 <p>Натисніть «Rozpocznij sesję»</p>
 <p>Біля кожного лічильника: скануйте QR-наклейку → вводьте показання → підтверджуйте</p>
@@ -856,11 +856,11 @@ tr:nth-child(even) td { background: #fafbfd; }
 </table>
 <p>Цільова адреса — загальна скринька</p>
 <p>JSON-файл необхідно надіслати на адресу:</p>
-<p>testsm@fizar.pl</p>
+<p><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="7602130502051b36101f0c170458061a">[email&#160;protected]</a></p>
 <p>ℹ️  Тема листа не має значення — Power Automate обробляє кожен лист із JSON-вкладенням, що надходить на цю скриньку.</p>
 <p>Що відбувається з файлом після надсилання</p>
 <p>Після отримання листа Power Automate автоматично:</p>
-<p>1   Отримує лист  —  загальна скринька testsm@fizar.pl</p>
+<p>1   Отримує лист  —  загальна скринька <a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="3347564047405e73555a4952411d435f">[email&#160;protected]</a></p>
 <p>2   Розпаковує вкладення JSON</p>
 <p>3   Зчитує з JSON: property та readingDate</p>
 <p>4   Створює папку періоду якщо не існує</p>
@@ -918,11 +918,11 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>1. Підготовка</td>
-<td>Оновіть PQ в Excel → отримайте QR з аркуша &quot;QR_JSON_Helper&quot;</td>
+<td>Оновіть PQ в Excel → натисніть «Generuj QR» → роздрукуйте аркуш "QR_JSON_Helper" з 3 QR-кодами</td>
 </tr>
 <tr>
 <td>2. Старт Genie</td>
-<td>Відкрийте Genie на телефоні → скануйте QR → перевірте дату звітності (авто) → введіть ім’я → Старт</td>
+<td>Відкрийте Genie на телефоні → скануйте QR для потрібного ресурсу (Тепло / Електрика / Вода) → застосунок автоматично обирає нерухомість і показує лише лічильники цього ресурсу → перевірте дату звітності (авто) → введіть ім’я → Старт</td>
 </tr>
 <tr>
 <td>3. Показання</td>
@@ -934,7 +934,7 @@ tr:nth-child(even) td { background: #fafbfd; }
 </tr>
 <tr>
 <td>5. Адреса надсилання</td>
-<td>testsm@fizar.pl</td>
+<td><a href="/cdn-cgi/l/email-protection" class="__cf_email__" data-cfemail="2a5e4f595e59476a4c43504b58045a46">[email&#160;protected]</a></td>
 </tr>
 <tr>
 <td>6. Результат</td>
@@ -945,31 +945,5 @@ tr:nth-child(even) td { background: #fafbfd; }
   </div>
 </main>
 
-<script>
-function toggleSidebar() {
-  document.getElementById('sidebar').classList.toggle('open');
-  document.getElementById('overlay').classList.toggle('show');
-}
-
-// Active TOC on scroll
-const allHeadings = document.querySelectorAll('[id]');
-const tocLinks    = document.querySelectorAll('.toc-item');
-
-const io = new IntersectionObserver(entries => {
-  entries.forEach(e => {
-    if (e.isIntersecting) {
-      const id = e.target.id;
-      tocLinks.forEach(l => l.classList.toggle('active', l.getAttribute('href') === '#'+id));
-    }
-  });
-}, { rootMargin: '-5% 0px -80% 0px' });
-
-allHeadings.forEach(h => io.observe(h));
-
-tocLinks.forEach(l => l.addEventListener('click', () => {
-  document.getElementById('sidebar').classList.remove('open');
-  document.getElementById('overlay').classList.remove('show');
-}));
-</script>
-</body>
-</html>
+<script data-cfasync="false" src="/cdn-cgi/scripts/5c5dd728/cloudflare-static/email-decode.min.js"></script><script>
+function toggle
