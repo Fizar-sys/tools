@@ -1117,8 +1117,9 @@ function finishSession() {
   const done = output.readings.filter(r => !r.skipped && r.current !== null).length;
   const skip = output.readings.filter(r => r.skipped).length;
 
+  const cfg = PROPERTY_CONFIG[currentProperty] || {};
   document.getElementById('doneDesc').textContent =
-    `Sesja odczytów z dnia ${readingDate} — Grudziądz`;
+    `Sesja odczytów z dnia ${readingDate} — ${cfg.name || currentProperty}`;
   document.getElementById('statDone').textContent = `${done} odczytów`;
   document.getElementById('statSkip').textContent = `${skip} pominięto`;
 
@@ -1200,11 +1201,19 @@ function processQRData(raw) {
       throw new Error('Nieprawidłowy format QR');
     }
 
-    // "v" is key-value object with compressed keys: {U}_{REST}
-    // e.g. "C_CWWII-0-H0001" → LICZ_C_ZIELON_CWWII-0-H0001
-    // Decompression: prepend "LICZ_" + U + "_" + PROP + "_" to REST
-    // PROP comes from data.p
+    // Auto-select property from QR payload (data.p = GRUDZ / MALBO / ZIELON)
     const prop = data.p;
+    if (prop && METERS_DATA[prop]) {
+      selectProperty(prop);
+    }
+
+    // Filter METERS to only the utility type carried in this QR
+    // data.t: "Cieplo" → u:"C" | "Prad" → u:"P" | "Woda" → u:"W"
+    const utilMap = { Cieplo:'C', Prad:'P', Woda:'W' };
+    const uCode = utilMap[data.t];
+    if (uCode && METERS_DATA[prop]) {
+      METERS = METERS_DATA[prop].filter(m => m.u === uCode);
+    }
 
     const rd = data.d || '';
     if (rd.includes('.')) {
@@ -1231,10 +1240,11 @@ function processQRData(raw) {
 
     const btn = document.getElementById('btnScanQR');
     btn.classList.add('success');
+    const utilLabel = { C:'Ciepło', P:'Prąd', W:'Woda' }[uCode] || data.t;
     btn.innerHTML = `<span style="font-size:24px">✅</span>
       <div>
         <div style="font-weight:600;font-size:15px">QR zeskanowany pomyślnie</div>
-        <div style="font-size:12px;opacity:.7">${count} odczytów z dnia ${data.d}</div>
+        <div style="font-size:12px;opacity:.7">${utilLabel} — ${count} liczników z dnia ${data.d}</div>
       </div>`;
 
     checkCanStart();
