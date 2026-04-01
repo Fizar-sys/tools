@@ -171,6 +171,7 @@ function matchBuilding(mw) {
 }
 function fmtPLN(v){ return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2})+' zł'; }
 function fmt8(v)  { return Number(v).toFixed(8).replace('.',','); }
+function fmt2(v)  { return Number(v).toFixed(2).replace('.',','); }
 
 const dropzone  = document.getElementById('dropzone');
 const fileInput = document.getElementById('fileInput');
@@ -337,7 +338,7 @@ function renderVerify(buildings){
     const zmText=ref.zm!==null
       ?`zmienna: <span class="${zmOk?'verify-ok':'verify-fail'}">${zmOk?'✓':'✗'} ${fmt8(b.cena_zmienna)} ${zmOk?'':'(ERP: '+ref.zm.toFixed(8)+')'}</span>`
       :`<span style="color:var(--muted);font-size:11px">zmienna: brak GJ</span>`;
-    rows.innerHTML+=`<div class="verify-row"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:140px">${b.name}</span><span>${zmText}</span><span style="color:var(--muted);font-size:12px">stała: <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt8(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span></span></div>`;
+    rows.innerHTML+=`<div class="verify-row"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:140px">${b.name}</span><span>${zmText}</span><span style="color:var(--muted);font-size:12px">stała: <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt2(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span></span></div>`;
   });
   const badge=document.createElement('div');
   badge.style.cssText='margin-top:10px;font-size:12px;font-family:IBM Plex Mono,monospace;';
@@ -360,7 +361,7 @@ function renderResults(data){
     if(b.gj)totalGJ+=b.gj;
     if(!BLD_ORDER.includes(b.name))warnings.push(`Nierozpoznany budynek MW=${b.mwTotal.toFixed(3)}`);
     const bdId=`bd-${i}`;
-    const stFmt=fmt8(b.stala);
+    const stFmt=fmt2(b.stala);
     const hasGJ=b.gj&&b.gj>0;
     const zmFmt=hasGJ?fmt8(b.cena_zmienna):'0,00000000';
     const card=document.createElement('div');
