@@ -380,29 +380,32 @@ function parseInvoices(lines) {
       if (!qty || isNaN(qty)) continue;
 
       /*
-        OPEC netto identification:
-        Look for the pattern: ...netto 23 vat brutto
-        The number just before "23" in the line is netto.
-        We find index of "23" among integers in the line,
-        then netto = decimal number just before it.
+        OPEC/SaldeoSMART invoice column order:
+        lp | desc | unit | qty | price | 0,00(rabat) | 23(VAT) | netto
+
+        Problem: pdf.js merges "23 641,51" → "23641,51" in the text stream.
+        Fix: remove the VAT rate prefix "23" that got glued to netto,
+        then take the last decimal number on the line.
+
+        Strategy:
+        1. Replace pattern /\b23(\d{3}[,.]\d{2})/ with just the netto part
+        2. Then take the last decimal number = netto
       */
       let netto = null;
 
-      // Find position of VAT rate (23) as standalone integer in line
-      const vatM = line.match(/\b23\b/);
-      if (vatM) {
-        // Get all numbers (decimal and integer) up to "23"
-        const beforeVat = line.substring(0, vatM.index);
-        const numsBeforeVat = [...beforeVat.matchAll(/(\d[\d\s]*[,.][\d]{2})/g)]
-          .map(m => parseNum(m[1]))
-          .filter(n => !isNaN(n) && n > 0);
-        if (numsBeforeVat.length) {
-          netto = numsBeforeVat[numsBeforeVat.length - 1];
-        }
+      // Clean line: separate "23" VAT rate from netto value it got merged with
+      // e.g. "23 641,51" stays separate but "23641,51" needs splitting
+      const cleanLine = line.replace(/\b23(\d{3}[,.]\d{2})\b/g, '$1');
+
+      // Now last decimal number on cleanLine = netto
+      const cleanNums = [...cleanLine.matchAll(/(\d[\d\s]*[,.][\d]{2})/g)]
+        .map(m => parseNum(m[1]))
+        .filter(n => !isNaN(n) && n > 0);
+
+      if (cleanNums.length) {
+        netto = cleanNums[cleanNums.length - 1];
       }
 
-      // Fallback: use nums[2] (qty | price | netto pattern)
-      if (!netto) netto = nums[2];
       if (!netto || isNaN(netto)) continue;
 
       // Description
@@ -411,14 +414,14 @@ function parseInvoices(lines) {
       if (desc.length > 70) desc = desc.substring(0, 70);
 
       // Dedup
-      const sig = `${block.invNo}|${unit}|${qty?.toFixed(4)}|${netto}`;
+      const sig = `${block.invNo}|${unit}|${qty?.toFixed(6)}|${netto?.toFixed(2)}`;
       if (seenSigs.has(sig)) continue;
       seenSigs.add(sig);
 
       const item = {unit, qty, netto, desc, invNo: block.invNo};
       blockItems.push(item);
       allItems.push(item);
-      DBG.items.push({unit, qty, netto, desc: desc.substring(0,55), nums: nums.map(n=>n.toFixed(2)).join(' | ')});
+      DBG.items.push({unit, qty, netto, desc: desc.substring(0,55), nums: cleanNums.map(n=>n.toFixed(2)).join(' | ')});
     }
   }
 
@@ -435,18 +438,24 @@ function parseInvoices(lines) {
 
   const buildings = [];
   for (const [invNo, group] of Object.entries(invoiceMap)) {
-    const mwTotal = group.mwItems.reduce((s,i) => s + i.qty, 0);
-    const gjTotal = group.gjItems.reduce((s,i) => s + i.qty, 0);
+    // MW total: sum of UNIQUE qty values per invoice
+    // Handles: same qty on both rows (01460, 01461) → deduplicated sum
+    // Handles: different qty rows if they appear (future invoices)
+    const mwUniq = [...new Set(group.mwItems.map(i => i.qty.toFixed(6)))].map(parseFloat);
+    const mwDistinct = mwUniq.reduce((s,v) => s+v, 0);
+    const gjUniq = [...new Set(group.gjItems.map(i => i.qty.toFixed(2)))].map(parseFloat);
+    const gjDistinct = gjUniq.reduce((s,v) => s+v, 0);
+
     const stSum   = group.mwItems.reduce((s,i) => s + i.netto, 0);
     const zmSum   = group.gjItems.reduce((s,i) => s + i.netto, 0);
 
-    const bldDef = matchBuilding(mwTotal);
-    const bldName = bldDef ? bldDef.name : `MW=${mwTotal.toFixed(3)}`;
+    const bldDef = matchBuilding(mwDistinct);
+    const bldName = bldDef ? bldDef.name : `MW=${mwDistinct.toFixed(3)}`;
 
-    DBG.mw.push(`Faktura ${invNo}: MW=${mwTotal.toFixed(4)} GJ=${gjTotal.toFixed(2)} → <span class="log-ok">${bldName}</span>`);
+    DBG.mw.push(`Faktura ${invNo}: MW=${mwDistinct.toFixed(4)} GJ=${gjDistinct.toFixed(2)} → <span class="log-ok">${bldName}</span>`);
     DBG.mw.push(`  stała=${stSum.toFixed(2)} zł · zmienna sum=${zmSum.toFixed(2)} zł`);
 
-    const gjQty = gjTotal > 0 ? gjTotal : null;
+    const gjQty = gjDistinct > 0 ? gjDistinct : null;
     const cenaZm = gjQty ? zmSum / gjQty : 0;
 
     DBG.gj.push(`${bldName}: GJ=${gjQty?.toFixed(2)||'brak'} · zmSum=${zmSum.toFixed(2)} → PLN/GJ=${gjQty?cenaZm.toFixed(8):'—'}`);
@@ -454,7 +463,7 @@ function parseInvoices(lines) {
     buildings.push({
       name:         bldName,
       invNo,
-      mwTotal:      mwTotal,
+      mwTotal:      mwDistinct,
       gj:           gjQty,
       cena_zmienna: cenaZm,
       stala:        stSum,
