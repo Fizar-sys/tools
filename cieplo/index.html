@@ -65,6 +65,31 @@
   .warn-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px 16px;color:var(--amber);font-size:12px;margin-bottom:16px;display:none;}
   .hint{font-size:11px;color:var(--muted);margin-top:16px;text-align:center;}
   footer{text-align:center;padding:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
+  /* Debug panel */
+  #debug{display:none;margin-top:32px;}
+  .debug-toggle{padding:7px 16px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;}
+  .debug-toggle:hover{color:var(--text);border-color:var(--accent);}
+  .debug-body{display:none;}
+  .debug-body.open{display:block;}
+  .debug-section{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:14px 16px;margin-bottom:12px;}
+  .debug-title{font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--accent);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;}
+  .debug-table{width:100%;border-collapse:collapse;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .debug-table th{text-align:left;color:var(--muted);padding:4px 8px;border-bottom:1px solid var(--border);font-weight:600;}
+  .debug-table td{padding:4px 8px;border-bottom:1px solid rgba(42,49,72,.5);color:var(--text);vertical-align:top;}
+  .debug-table tr:last-child td{border-bottom:none;}
+  .debug-table td.unit-GJ{color:#22c55e;}
+  .debug-table td.unit-MW{color:#f59e0b;}
+  .debug-table td.unit-m3{color:#38bdf8;}
+  .debug-table td.unit-szt{color:#a78bfa;}
+  .debug-log{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);line-height:1.8;}
+  .log-ok{color:#22c55e;}
+  .log-warn{color:#f59e0b;}
+  .log-step{color:var(--accent);}
+  .verify-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(42,49,72,.5);font-size:12px;}
+  .verify-row:last-child{border-bottom:none;}
+  .verify-ok{color:#22c55e;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .verify-fail{color:#ef4444;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  .raw-lines{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);max-height:200px;overflow-y:auto;line-height:1.6;background:var(--surface2);padding:10px;border-radius:6px;}
 </style>
 </head>
 <body>
@@ -108,6 +133,43 @@
     </div>
     <div class="buildings-grid" id="buildingsGrid"></div>
     <div class="summary-bar" id="summaryBar"></div>
+
+    <div id="verifyPanel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;">
+      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">Weryfikacja · Luty 2026 (wartości ERP)</div>
+      <div id="verifyRows"></div>
+    </div>
+
+    <div id="debug">
+      <button class="debug-toggle" onclick="toggleDebug()">🔍 Pokaż log parsowania</button>
+      <div class="debug-body" id="debugBody">
+        <div class="debug-section">
+          <div class="debug-title">1 · Wyekstrahowane pozycje (items)</div>
+          <table class="debug-table" id="dbgItems">
+            <tr><th>#</th><th>unit</th><th>qty</th><th>netto</th><th>desc</th></tr>
+          </table>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">2 · Grupy MW → budynki</div>
+          <div class="debug-log" id="dbgMW"></div>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">3 · Grupy GJ → przypisanie</div>
+          <div class="debug-log" id="dbgGJ"></div>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">4 · Nośnik ciepła m³ → przypisanie</div>
+          <div class="debug-log" id="dbgM3"></div>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">5 · Dzierżawa szt → przypisanie</div>
+          <div class="debug-log" id="dbgSzt"></div>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">6 · Surowe linie PDF (pierwsze 150)</div>
+          <div class="raw-lines" id="dbgRawLines"></div>
+        </div>
+      </div>
+    </div>
   </div>
 </main>
 <footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
@@ -197,7 +259,14 @@ async function processFile(file) {
   }
 }
 
+// ── Debug log storage ──
+const DBG = { items:[], mw:[], gj:[], m3:[], szt:[], rawLines:[] };
+
 function parseInvoices(lines) {
+  // Store raw lines for debug
+  DBG.rawLines = lines.slice(0, 150);
+  DBG.items=[]; DBG.mw=[]; DBG.gj=[]; DBG.m3=[]; DBG.szt=[];
+
   // ── Detect period ──
   let okres = null;
   for (const line of lines) {
@@ -246,100 +315,91 @@ function parseInvoices(lines) {
     if (desc.length > 80) desc = desc.substring(0, 80);
 
     items.push({unit, qty, netto, desc, line});
+    DBG.items.push({unit, qty, netto, desc: desc.substring(0,60)});
   }
 
   // ── Group by MW value → meter blocks ──
   const mwItems = items.filter(i => i.unit === 'MW' && i.qty);
-
-  // Find distinct MW quantities
   const mwQties = [...new Set(mwItems.map(i => i.qty.toFixed(4)))].map(parseFloat);
+  if (!mwQties.length) throw new Error('Nie znaleziono pozycji MW. Sprawdź czy plik to faktura PGE za ciepło.');
 
-  if (!mwQties.length) throw new Error('Nie znaleziono pozycji MW w fakturze. Sprawdź czy plik to faktura PGE za ciepło.');
-
-  // Build meter map
   const meters = {};
   for (const mwQty of mwQties) {
-    const key = mwQty.toFixed(4);
-    meters[key] = {
-      mw:       mwQty,
-      name:     matchBuilding(mwQty) || `MW=${mwQty}`,
-      st_rows:  [],
-      zm_rows:  [],
-      gj:       null,
-    };
+    const key  = mwQty.toFixed(4);
+    const name = matchBuilding(mwQty) || `MW=${mwQty}`;
+    meters[key] = {mw:mwQty, name, st_rows:[], zm_rows:[], gj:null};
+    DBG.mw.push(`MW=${mwQty.toFixed(4)} → <span class="log-ok">${name}</span> · ${mwItems.filter(i=>i.qty.toFixed(4)===key).length} wierszy MW`);
   }
-
-  // Assign MW rows to their meter
   for (const item of mwItems) {
     const key = item.qty.toFixed(4);
-    if (meters[key]) {
-      meters[key].st_rows.push({name: item.desc, netto: item.netto});
-    }
+    if (meters[key]) meters[key].st_rows.push({name:item.desc, netto:item.netto});
   }
 
   // ── Assign GJ rows ──
-  // Group GJ items by their qty value (each meter has unique GJ total)
   const gjItems = items.filter(i => i.unit === 'GJ' && i.qty);
   const gjByQty = {};
   for (const item of gjItems) {
-    const key = item.qty.toFixed(2);
-    (gjByQty[key] = gjByQty[key] || []).push(item);
+    (gjByQty[item.qty.toFixed(2)] = gjByQty[item.qty.toFixed(2)] || []).push(item);
   }
-
-  // Match each GJ group to a meter
-  // Strategy: sort both by size, match in order
   const meterList = Object.values(meters).sort((a,b) => b.mw - a.mw);
   const gjGroups  = Object.entries(gjByQty).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0]));
 
-  // Each meter gets one GJ group (largest MW → largest GJ, etc.)
+  DBG.gj.push(`<span class="log-step">meterList (MW desc):</span> ${meterList.map(m=>m.name+'('+m.mw+')').join(' → ')}`);
+  DBG.gj.push(`<span class="log-step">gjGroups  (GJ desc):</span> ${gjGroups.map(([k,v])=>k+'GJ·'+v.length+'rows').join(' → ')}`);
+
   gjGroups.forEach(([gjQtyStr, gjRows], idx) => {
     const target = meterList[idx];
-    if (!target) return;
+    if (!target) { DBG.gj.push(`<span class="log-warn">⚠ Brak metra dla GJ=${gjQtyStr}</span>`); return; }
     target.gj = parseFloat(gjQtyStr);
-    target.zm_rows.push(...gjRows.map(r => ({name: r.desc, netto: r.netto})));
+    target.zm_rows.push(...gjRows.map(r=>({name:r.desc, netto:r.netto})));
+    const sum = gjRows.reduce((s,r)=>s+r.netto,0);
+    DBG.gj.push(`[${idx}] GJ=${gjQtyStr} (${gjRows.length} wierszy, ${sum.toFixed(2)} zł) → <span class="log-ok">${target.name}</span>`);
   });
 
-  // ── Assign m³ rows (nośnik ciepła) ──
+  // ── Assign m³ rows ──
   const m3Items = items.filter(i => i.unit === 'm3' && i.qty);
-  // Sort meters by GJ desc, assign m3 rows in order (one per meter)
   const metersWithGJ = meterList.filter(m => m.gj !== null);
+  DBG.m3.push(`<span class="log-step">m³ wierszy: ${m3Items.length} · metrów z GJ: ${metersWithGJ.length}</span>`);
+  DBG.m3.push(`<span class="log-step">metersWithGJ (MW desc):</span> ${metersWithGJ.map(m=>m.name+'(GJ='+m.gj+')').join(' → ')}`);
   m3Items.forEach((m3, idx) => {
     const target = metersWithGJ[idx];
     if (target) {
-      target.zm_rows.push({name: `Nośnik ciepła ${m3.qty.toFixed(2)} m³`, netto: m3.netto});
+      target.zm_rows.push({name:`Nośnik ciepła ${m3.qty.toFixed(2)} m³`, netto:m3.netto});
+      DBG.m3.push(`[${idx}] m³=${m3.qty.toFixed(2)} (${m3.netto.toFixed(2)} zł) → <span class="log-ok">${target.name}</span>`);
+    } else {
+      DBG.m3.push(`<span class="log-warn">[${idx}] ⚠ Brak targetu dla m³=${m3.qty} (${m3.netto} zł)</span>`);
     }
   });
 
-  // ── Assign szt rows (dzierżawa) → CWWII stała ──
+  // ── Assign szt rows → CWWII stała ──
   const sztItems = items.filter(i => i.unit === 'szt');
   const cwwii = meterList.find(m => m.name === 'CWWII') || meterList[0];
+  if (!sztItems.length) DBG.szt.push('<span class="log-warn">Brak wierszy szt w tej fakturze</span>');
   for (const szt of sztItems) {
-    cwwii.st_rows.push({name: szt.desc || 'Dzierżawa licznika', netto: szt.netto});
+    cwwii.st_rows.push({name:szt.desc||'Dzierżawa licznika', netto:szt.netto});
+    DBG.szt.push(`"${szt.desc}" (${szt.netto.toFixed(2)} zł) → <span class="log-ok">${cwwii.name}</span>`);
   }
 
-  // ── Sort by BLD_ORDER and return ──
+  // ── Sort by BLD_ORDER and compute ──
   const buildings = meterList
-    .sort((a,b) => {
-      const ia = BLD_ORDER.indexOf(a.name), ib = BLD_ORDER.indexOf(b.name);
-      return (ia===-1?99:ia)-(ib===-1?99:ib);
-    })
+    .sort((a,b) => { const ia=BLD_ORDER.indexOf(a.name),ib=BLD_ORDER.indexOf(b.name); return (ia===-1?99:ia)-(ib===-1?99:ib); })
     .map(m => {
       const zmSum = m.zm_rows.reduce((s,r)=>s+r.netto,0);
       const stSum = m.st_rows.reduce((s,r)=>s+r.netto,0);
-      const gj    = m.gj || 1;
-      return {
-        name:         m.name,
-        mw:           m.mw,
-        gj,
-        cena_zmienna: zmSum / gj,
-        stala:        stSum,
-        zm_rows:      m.zm_rows,
-        st_rows:      m.st_rows,
-      };
+      const gj    = m.gj||1;
+      return {name:m.name, mw:m.mw, gj, cena_zmienna:zmSum/gj, stala:stSum, zm_rows:m.zm_rows, st_rows:m.st_rows};
     });
 
-  return {okres: okres || '—', buildings};
+  return {okres: okres||'—', buildings};
 }
+
+// ── Known ERP values for verification (Luty 2026) ──
+const ERP_VERIFY = {
+  'CWWI':  {zm: 143.42765821, st: 5589.07},
+  'CWWII': {zm: 143.33387210, st: 5902.75},
+  'CWWIII':{zm: 181.45006693, st: 4919.11},
+  'CWWO':  {zm: 181.45007923, st: 1446.79},
+};
 
 function copyValue(el, rawVal) {
   navigator.clipboard.writeText(String(rawVal).replace(',','.')).then(() => {
@@ -358,6 +418,70 @@ function toggleBreakdown(btn, id) {
 }
 window.toggleBreakdown = toggleBreakdown;
 
+function toggleDebug() {
+  const body = document.getElementById('debugBody');
+  body.classList.toggle('open');
+  const btn = document.querySelector('.debug-toggle');
+  btn.textContent = body.classList.contains('open') ? '🔍 Ukryj log parsowania' : '🔍 Pokaż log parsowania';
+}
+window.toggleDebug = toggleDebug;
+
+function renderDebug() {
+  // Items table
+  const tbl = document.getElementById('dbgItems');
+  DBG.items.forEach((item,i) => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${i+1}</td><td class="unit-${item.unit}">${item.unit}</td><td>${item.qty!==null?item.qty.toFixed(4):'—'}</td><td>${item.netto.toFixed(2)}</td><td>${item.desc}</td>`;
+    tbl.appendChild(tr);
+  });
+  // Log sections
+  document.getElementById('dbgMW').innerHTML  = DBG.mw.join('<br>');
+  document.getElementById('dbgGJ').innerHTML  = DBG.gj.join('<br>');
+  document.getElementById('dbgM3').innerHTML  = DBG.m3.join('<br>');
+  document.getElementById('dbgSzt').innerHTML = DBG.szt.join('<br>');
+  // Raw lines
+  document.getElementById('dbgRawLines').innerHTML = DBG.rawLines
+    .map((l,i) => `<span style="color:var(--muted);margin-right:8px">${String(i+1).padStart(3,' ')}</span>${l.replace(/</g,'&lt;')}`)
+    .join('<br>');
+  document.getElementById('debug').style.display = 'block';
+}
+
+function renderVerify(buildings) {
+  const isLut = buildings.some(b => ERP_VERIFY[b.name]);
+  if (!isLut) return; // only show verify panel for Luty 2026
+
+  const panel = document.getElementById('verifyPanel');
+  const rows  = document.getElementById('verifyRows');
+  rows.innerHTML = '';
+  let allOk = true;
+
+  buildings.forEach(b => {
+    const ref = ERP_VERIFY[b.name];
+    if (!ref) return;
+    const zmOk = Math.abs(b.cena_zmienna - ref.zm) < 0.000001;
+    const stOk = Math.abs(b.stala - ref.st) < 0.01;
+    if (!zmOk || !stOk) allOk = false;
+
+    rows.innerHTML += `
+      <div class="verify-row">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:60px">${b.name}</span>
+        <span style="color:var(--muted);font-size:12px">zmienna:</span>
+        <span class="${zmOk?'verify-ok':'verify-fail'}">${zmOk?'✓':'✗'} ${fmt8(b.cena_zmienna)} ${zmOk?'':'(ERP: '+ref.zm.toFixed(8)+')'}</span>
+        <span style="color:var(--muted);font-size:12px;margin-left:12px">stała:</span>
+        <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt8(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span>
+      </div>`;
+  });
+
+  panel.style.display = 'block';
+  // Add summary badge
+  const badge = document.createElement('div');
+  badge.style.cssText = 'margin-top:10px;font-size:12px;font-family:IBM Plex Mono,monospace;';
+  badge.innerHTML = allOk
+    ? '<span class="verify-ok">✓ Wszystkie wartości zgodne z ERP Luty 2026</span>'
+    : '<span class="verify-fail">✗ Wykryto rozbieżności — sprawdź log parsowania</span>';
+  rows.appendChild(badge);
+}
+
 function renderResults(data) {
   document.getElementById('results').style.display='block';
   document.getElementById('periodBadge').textContent = data.okres;
@@ -371,12 +495,10 @@ function renderResults(data) {
     const stSum = b.st_rows.reduce((s,r)=>s+r.netto,0);
     totalZm+=zmSum; totalSt+=stSum; totalGJ+=b.gj;
     if (!BLD_ORDER.includes(b.name)) warnings.push(`Nierozpoznany budynek MW=${b.mw}`);
-
     const bdId  = `bd-${i}`;
     const zmFmt = fmt8(b.cena_zmienna);
     const stFmt = fmt8(b.stala);
-
-    const card = document.createElement('div');
+    const card  = document.createElement('div');
     card.className = 'bld-card';
     card.innerHTML = `
       <div class="bld-name">${b.name}</div>
@@ -410,6 +532,9 @@ function renderResults(data) {
     wb.textContent='⚠ '+warnings.join(' | ');
     wb.style.display='block';
   }
+
+  renderVerify(data.buildings);
+  renderDebug();
 }
 window.restart = restart;
 </script>
