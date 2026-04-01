@@ -311,20 +311,22 @@ function buildResult(invoices){
 
   dbgResult.innerHTML+=`<span class="log-step">GJ groups:</span> ${Object.keys(gjGroups).join(', ')}<br><br>`;
 
-  Object.entries(gjGroups).forEach(([key,rows])=>{
+  // Sort GJ groups by GJ qty desc — largest GJ → largest MW building
+  const gjGroupsSorted=Object.entries(gjGroups).sort((a,b)=>parseFloat(b[0].split('|')[1])-parseFloat(a[0].split('|')[1]));
+
+  gjGroupsSorted.forEach(([key,rows])=>{
     const [invNo,gjQtyStr]=key.split('|');
     const gjQty=parseFloat(gjQtyStr);
-    // Find building in same invoice with this GJ qty not yet assigned
-    const candidates=Object.values(buildings).filter(b=>b.invNos.has(invNo)&&!b.gjQties.has(gjQty));
-    if(candidates.length===1){
+    // Find buildings in same invoice that have NOT yet received any GJ rows
+    const candidates=Object.values(buildings)
+      .filter(b=>b.invNos.has(invNo) && b.gjQties.size===0)
+      .sort((a,b)=>b.mw-a.mw); // largest MW first
+    if(candidates.length>0){
       candidates[0].gjQties.add(gjQty);
       rows.forEach(r=>candidates[0].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
-    } else if(candidates.length>1){
-      // Multiple buildings in same invoice with same GJ qty — assign to unmatched one
-      // in MW desc order (largest MW first matches largest GJ first)
-      const sorted=candidates.sort((a,b)=>b.mw-a.mw);
-      sorted[0].gjQties.add(gjQty);
-      rows.forEach(r=>sorted[0].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
+      dbgResult.innerHTML+=`GJ=${gjQty} → <span class="log-ok">${candidates[0].name}</span><br>`;
+    } else {
+      dbgResult.innerHTML+=`<span class="log-warn">⚠ Brak kandydata dla GJ=${gjQty} w fakturze ${invNo}</span><br>`;
     }
   });
 
