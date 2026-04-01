@@ -3,16 +3,10 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Fizar — Kalkulator Ciepła</title>
+<title>Fizar — Kalkulator Ciepła ZIELON</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
-  :root {
-    --bg:#0f1117; --surface:#181c27; --surface2:#1e2435;
-    --border:#2a3148; --accent:#3b82f6;
-    --text:#e2e8f0; --muted:#64748b;
-    --green:#22c55e; --green-bg:rgba(34,197,94,.10);
-    --amber:#f59e0b; --red:#ef4444;
-  }
+  :root{--bg:#0f1117;--surface:#181c27;--surface2:#1e2435;--border:#2a3148;--accent:#3b82f6;--text:#e2e8f0;--muted:#64748b;--green:#22c55e;--green-bg:rgba(34,197,94,.10);--amber:#f59e0b;--red:#ef4444;}
   *{box-sizing:border-box;margin:0;padding:0;}
   body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
   header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;gap:16px;}
@@ -47,9 +41,10 @@
   .field-value{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--green);background:var(--green-bg);border:1px solid rgba(34,197,94,.15);border-radius:6px;padding:8px 10px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s;user-select:all;}
   .field-value:hover{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.35);}
   .field-value.copied{background:rgba(34,197,94,.25);color:#fff;}
+  .field-value.stala-only{color:var(--amber);background:rgba(245,158,11,.08);border-color:rgba(245,158,11,.2);}
   .copy-hint{font-size:10px;color:rgba(34,197,94,.5);font-weight:400;}
   .field-unit{font-size:11px;color:var(--muted);margin-top:3px;font-family:'IBM Plex Mono',monospace;}
-  .breakdown-toggle{margin-top:12px;font-size:11px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0;font-family:'IBM Plex Sans',sans-serif;display:flex;align-items:center;gap:4px;}
+  .breakdown-toggle{margin-top:12px;font-size:11px;color:var(--muted);cursor:pointer;background:none;border:none;padding:0;font-family:'IBM Plex Sans',sans-serif;}
   .breakdown-toggle:hover{color:var(--text);}
   .breakdown-body{display:none;margin-top:10px;border-top:1px solid var(--border);padding-top:10px;}
   .breakdown-body.open{display:block;}
@@ -63,10 +58,7 @@
   .btn-restart:hover{color:var(--text);border-color:var(--amber);}
   .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:14px 18px;color:#fca5a5;font-size:13px;margin-top:16px;display:none;}
   .warn-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px 16px;color:var(--amber);font-size:12px;margin-bottom:16px;display:none;}
-  .hint{font-size:11px;color:var(--muted);margin-top:16px;text-align:center;}
-  footer{text-align:center;padding:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
-  /* Debug panel */
-  #debug{display:none;margin-top:32px;}
+  #debug{display:none;margin-top:24px;}
   .debug-toggle{padding:7px 16px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;}
   .debug-toggle:hover{color:var(--text);border-color:var(--accent);}
   .debug-body{display:none;}
@@ -85,11 +77,11 @@
   .log-ok{color:#22c55e;}
   .log-warn{color:#f59e0b;}
   .log-step{color:var(--accent);}
-  .verify-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(42,49,72,.5);font-size:12px;}
+  .verify-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(42,49,72,.5);font-size:12px;flex-wrap:wrap;gap:8px;}
   .verify-row:last-child{border-bottom:none;}
   .verify-ok{color:#22c55e;font-family:'IBM Plex Mono',monospace;font-size:11px;}
   .verify-fail{color:#ef4444;font-family:'IBM Plex Mono',monospace;font-size:11px;}
-  .raw-lines{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);max-height:200px;overflow-y:auto;line-height:1.6;background:var(--surface2);padding:10px;border-radius:6px;}
+  footer{text-align:center;padding:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
 </style>
 </head>
 <body>
@@ -100,26 +92,26 @@
   <p>PGE Zielona Góra S.A. · umowy 553/A2 · 162/A4</p>
 </header>
 <main>
-  <h1>Kalkulator <span>Ciepła</span></h1>
-  <p class="subtitle">Wczytaj fakturę PGE — oblicza stawki zmienne (PLN/GJ) i opłaty stałe (PLN) gotowe do ERP. Przetwarzanie lokalne — plik nie opuszcza przeglądarki.</p>
+  <h1>Kalkulator <span>Ciepła</span> · Zielona Góra</h1>
+  <p class="subtitle">Wczytaj ZIP z plikami KSeF XML — SaldeoSMART → zaznacz faktury PGE → <strong>Download ksef xml to zip</strong>. Przetwarzanie lokalne, plik nie opuszcza przeglądarki.</p>
 
   <div id="panel-upload">
     <div class="upload-zone" id="dropzone">
       <svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="1.5" style="margin:0 auto 14px;display:block">
-        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/>
-        <line x1="12" y1="18" x2="12" y2="12"/><polyline points="9 15 12 12 15 15"/>
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
       </svg>
-      <h2>Upuść fakturę PGE (PDF)</h2>
-      <p>Faktury za ciepło sieciowe — PGE Zielona Góra S.A.</p>
-      <input type="file" id="fileInput" accept=".pdf">
-      <label for="fileInput" class="btn-upload">Wybierz plik PDF</label>
+      <h2>Upuść plik ZIP z KSeF XML</h2>
+      <p>SaldeoSMART → zaznacz faktury PGE Zielona Góra → Download ksef xml to zip</p>
+      <input type="file" id="fileInput" accept=".zip">
+      <label for="fileInput" class="btn-upload">Wybierz plik ZIP</label>
     </div>
     <div class="error-box" id="errorBox"></div>
   </div>
 
   <div id="processing">
     <div class="spinner"></div>
-    <p style="color:var(--muted)">Parsowanie faktury…</p>
+    <p style="color:var(--muted)" id="processingText">Wczytuję ZIP…</p>
   </div>
 
   <div id="results">
@@ -133,40 +125,26 @@
     </div>
     <div class="buildings-grid" id="buildingsGrid"></div>
     <div class="summary-bar" id="summaryBar"></div>
-
     <div id="verifyPanel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;">
       <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">Weryfikacja · Luty 2026 (wartości ERP)</div>
       <div id="verifyRows"></div>
     </div>
-
     <div id="debug">
       <button class="debug-toggle" onclick="toggleDebug()">🔍 Pokaż log parsowania</button>
       <div class="debug-body" id="debugBody">
         <div class="debug-section">
-          <div class="debug-title">1 · Wyekstrahowane pozycje (items)</div>
+          <div class="debug-title">1 · Pliki XML w ZIP</div>
+          <div class="debug-log" id="dbgFiles"></div>
+        </div>
+        <div class="debug-section">
+          <div class="debug-title">2 · Wszystkie wiersze faktur (P_11 = netto)</div>
           <table class="debug-table" id="dbgItems">
-            <tr><th>#</th><th>unit</th><th>qty</th><th>netto</th><th>desc</th><th>all nums found</th></tr>
+            <tr><th>faktura</th><th>lp</th><th>opis (P_7)</th><th>unit (P_8A)</th><th>qty (P_8B)</th><th>netto (P_11)</th></tr>
           </table>
         </div>
         <div class="debug-section">
-          <div class="debug-title">2 · Grupy MW → budynki</div>
-          <div class="debug-log" id="dbgMW"></div>
-        </div>
-        <div class="debug-section">
-          <div class="debug-title">3 · Grupy GJ → przypisanie</div>
-          <div class="debug-log" id="dbgGJ"></div>
-        </div>
-        <div class="debug-section">
-          <div class="debug-title">4 · Nośnik ciepła m³ → przypisanie</div>
-          <div class="debug-log" id="dbgM3"></div>
-        </div>
-        <div class="debug-section">
-          <div class="debug-title">5 · Dzierżawa szt → przypisanie</div>
-          <div class="debug-log" id="dbgSzt"></div>
-        </div>
-        <div class="debug-section">
-          <div class="debug-title">6 · Surowe linie PDF (pierwsze 150)</div>
-          <div class="raw-lines" id="dbgRawLines"></div>
+          <div class="debug-title">3 · Grupowanie per budynek</div>
+          <div class="debug-log" id="dbgResult"></div>
         </div>
       </div>
     </div>
@@ -174,15 +152,15 @@
 </main>
 <footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
 
-<script type="module">
-  import * as pdfjsLib from 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.min.mjs';
-  pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@4.0.379/build/pdf.worker.min.mjs';
-  window._pdfjs = pdfjsLib;
-  window.dispatchEvent(new Event('pdfReady'));
-</script>
-
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script>
-const MW_MAP = [
+const ERP_VERIFY = {
+  'CWWI':  {zm:143.42765821, st:5589.07},
+  'CWWII': {zm:143.33387210, st:5902.75},
+  'CWWIII':{zm:181.45006693, st:4919.11},
+  'CWWO':  {zm:181.45007923, st:1446.79},
+};
+const MW_BLD_MAP = [
   {mw:0.3068, name:'CWWII'},
   {mw:0.30,   name:'CWWI'},
   {mw:0.17,   name:'CWWIII'},
@@ -190,360 +168,299 @@ const MW_MAP = [
 ];
 const BLD_ORDER = ['CWWI','CWWII','CWWIII','CWWO'];
 
-function matchBuilding(mw) {
-  const f = MW_MAP.find(m => Math.abs(m.mw - mw) < 0.001);
-  return f ? f.name : null;
+function matchBuilding(mw){
+  const f=MW_BLD_MAP.find(b=>Math.abs(b.mw-mw)<0.001);
+  return f?f.name:null;
 }
-function parseNum(s) { return parseFloat(String(s).replace(/\s/g,'').replace(',','.')); }
-function fmtPLN(v)   { return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2})+' zł'; }
-function fmt8(v)     { return Number(v).toFixed(8).replace('.',','); }
+function fmtPLN(v){return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2})+' zł';}
+function fmt8(v) {return Number(v).toFixed(8).replace('.',',');}
+function fmt2(v) {return Number(v).toFixed(2).replace('.',',');}
 
-let pdfReady = false;
-window.addEventListener('pdfReady', () => { pdfReady = true; });
-async function waitPdf() {
-  if (pdfReady) return;
-  await new Promise(r => window.addEventListener('pdfReady', r, {once:true}));
-}
+const dropzone=document.getElementById('dropzone');
+const fileInput=document.getElementById('fileInput');
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop',e=>{e.preventDefault();dropzone.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])processFile(fileInput.files[0]);});
 
-const dropzone  = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-dropzone.addEventListener('dragover', e => { e.preventDefault(); dropzone.classList.add('drag'); });
-dropzone.addEventListener('dragleave', () => dropzone.classList.remove('drag'));
-dropzone.addEventListener('drop', e => { e.preventDefault(); dropzone.classList.remove('drag'); if(e.dataTransfer.files[0]) processFile(e.dataTransfer.files[0]); });
-fileInput.addEventListener('change', () => { if(fileInput.files[0]) processFile(fileInput.files[0]); });
+function showError(msg){const el=document.getElementById('errorBox');el.textContent=msg;el.style.display='block';}
 
-function showError(msg) { const el=document.getElementById('errorBox'); el.textContent=msg; el.style.display='block'; }
-
-function restart() {
-  document.getElementById('panel-upload').style.display='block';
-  document.getElementById('processing').style.display='none';
-  document.getElementById('results').style.display='none';
-  document.getElementById('errorBox').style.display='none';
-  document.getElementById('warnBox').style.display='none';
-  dropzone.style.display='block';
-  fileInput.value='';
+function restart(){
+  ['panel-upload','results'].forEach(id=>document.getElementById(id).style.display=id==='panel-upload'?'block':'none');
+  ['processing','errorBox','warnBox','verifyPanel','debug'].forEach(id=>document.getElementById(id).style.display='none');
+  dropzone.style.display='block';fileInput.value='';
+  document.getElementById('dbgFiles').innerHTML='';
+  document.getElementById('dbgItems').innerHTML='<tr><th>faktura</th><th>lp</th><th>opis (P_7)</th><th>unit (P_8A)</th><th>qty (P_8B)</th><th>netto (P_11)</th></tr>';
+  document.getElementById('dbgResult').innerHTML='';
+  document.getElementById('verifyRows').innerHTML='';
 }
 
-async function processFile(file) {
-  if (!file.name.toLowerCase().endsWith('.pdf')) { showError('Proszę wybrać plik PDF.'); return; }
+async function processFile(file){
+  if(!file.name.toLowerCase().endsWith('.zip')){showError('Proszę wybrać plik ZIP.');return;}
   dropzone.style.display='none';
-  document.getElementById('processing').style.display='block';
   document.getElementById('errorBox').style.display='none';
-  try {
-    await waitPdf();
-    const buf = await file.arrayBuffer();
-    const pdf = await window._pdfjs.getDocument({data:new Uint8Array(buf)}).promise;
-    const lines = [];
-    for (let p=1; p<=pdf.numPages; p++) {
-      const page    = await pdf.getPage(p);
-      const content = await page.getTextContent();
-      const byY = {};
-      for (const item of content.items) {
-        if (!item.str||!item.str.trim()) continue;
-        const y = Math.round(item.transform[5]/2)*2;
-        (byY[y]=byY[y]||[]).push({x:item.transform[4], str:item.str.trim()});
-      }
-      for (const y of Object.keys(byY).map(Number).sort((a,b)=>b-a)) {
-        lines.push(byY[y].sort((a,b)=>a.x-b.x).map(i=>i.str).join(' '));
-      }
+  document.getElementById('processingText').textContent='Wczytuję ZIP…';
+  document.getElementById('processing').style.display='block';
+  try{
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const xmlFiles=Object.keys(zip.files).filter(n=>n.toLowerCase().endsWith('.xml'));
+    if(!xmlFiles.length) throw new Error('Brak plików XML w archiwum.');
+    document.getElementById('dbgFiles').innerHTML=
+      `<span class="log-step">Pliki XML: ${xmlFiles.length}</span><br>`+
+      xmlFiles.map(f=>`· ${f}`).join('<br>');
+    document.getElementById('processingText').textContent=`Parsowanie ${xmlFiles.length} faktur XML…`;
+    const invoices=[];
+    for(const fname of xmlFiles){
+      const xmlText=await zip.files[fname].async('string');
+      const inv=parseXML(xmlText,fname);
+      if(inv)invoices.push(inv);
     }
-    const result = parseInvoices(lines);
+    if(!invoices.length) throw new Error('Nie znaleziono prawidłowych faktur KSeF XML.');
+    const result=buildResult(invoices);
     document.getElementById('processing').style.display='none';
     document.getElementById('panel-upload').style.display='none';
     renderResults(result);
-  } catch(e) {
+  }catch(e){
     document.getElementById('processing').style.display='none';
     dropzone.style.display='block';
-    showError('Błąd parsowania: '+e.message);
+    showError('Błąd: '+e.message);
     console.error(e);
   }
 }
 
-// ── Debug log storage ──
-const DBG = { items:[], mw:[], gj:[], m3:[], szt:[], rawLines:[] };
-
-function parseInvoices(lines) {
-  // Store raw lines for debug
-  DBG.rawLines = lines.slice(0, 150);
-  DBG.items=[]; DBG.mw=[]; DBG.gj=[]; DBG.m3=[]; DBG.szt=[];
-
-  // ── Detect period ──
-  let okres = null;
-  for (const line of lines) {
-    const m = line.match(/(styczeń|luty|marzec|kwiecień|maj|czerwiec|lipiec|sierpień|wrzesień|październik|listopad|grudzień)\s+(\d{4})/i);
-    if (m) { okres = m[0]; break; }
-    const m2 = line.match(/Data\s+dostawy[:\s]+(\S+\s+\d{4})/i);
-    if (m2) { okres = m2[1]; break; }
+function getVal(el,localName){
+  // Namespace-agnostic: works with tns:P_11 and plain P_11
+  const all=el.getElementsByTagName('*');
+  for(const node of all){
+    if(node.localName===localName) return node.textContent.trim();
   }
+  return null;
+}
 
-  // ── Extract all invoice line items ──
-  // Each relevant line has: description | unit | qty | price | ... | netto
-  // Units we care about: GJ, MW, m3/m³, szt
-  const items = [];
-  const seenSigs = new Set(); // deduplicate identical lines
-
-  for (const line of lines) {
-    // Must contain a unit keyword
-    if (!/\b(GJ|MW|m[3³]|szt)\b/i.test(line)) continue;
-    // Must contain at least one decimal number (value)
-    if (!/\d+[,\.]\d{2}/.test(line)) continue;
-
-    // Get all decimal numbers from the line
-    const nums = [...line.matchAll(/(\d[\d\s]*[,.][\d]{2})/g)].map(m => parseNum(m[1])).filter(n => !isNaN(n) && n > 0);
-    if (nums.length < 2) continue;
-
-    // Column order from pdf.js: ...wartość brutto | wartość netto | kwota VAT
-    // So netto = second-to-last number, VAT = last number
-    const netto = nums[nums.length - 2];
-
-    // Determine unit
-    let unit = null;
-    if      (/\bGJ\b/.test(line))    unit = 'GJ';
-    else if (/\bMW\b/.test(line))    unit = 'MW';
-    else if (/\bm[3³]\b/.test(line)) unit = 'm3';
-    else if (/\bszt\b/i.test(line))  unit = 'szt';
-    if (!unit) continue;
-
-    // Quantity: first number after unit keyword
-    let qty = null;
-    const qtyM = line.match(new RegExp('\\b'+unit+'\\b\\s+([\\d\\s,\\.]+)', 'i'));
-    if (qtyM) {
-      qty = parseNum(qtyM[1].trim().split(/\s+/)[0]);
+function parseXML(xmlText,fname){
+  const doc=new DOMParser().parseFromString(xmlText,'application/xml');
+  if(doc.querySelector('parsererror')){console.warn('XML parse error:',fname);return null;}
+  const invNo=getVal(doc,'P_2')||fname;
+  const periodTo=getVal(doc,'P_6_Do')||'';
+  const rows=[];
+  const all=doc.getElementsByTagName('*');
+  for(const node of all){
+    if(node.localName==='FaWiersz'){
+      rows.push({
+        lp:    getVal(node,'NrWierszaFa')||'',
+        desc:  (getVal(node,'P_7')||'').trim(),
+        unit:  (getVal(node,'P_8A')||'').trim(),
+        qty:   parseFloat(getVal(node,'P_8B')||'0'),
+        netto: parseFloat(getVal(node,'P_11')||'0'),
+      });
     }
+  }
+  return{invNo,periodTo,rows,fname};
+}
 
-    // Description: text before unit keyword, strip leading lp number
-    const unitIdx = line.search(new RegExp('\\b'+unit+'\\b','i'));
-    let desc = unitIdx > 0 ? line.substring(0, unitIdx).replace(/^\d+\s*/,'').trim() : unit;
-    if (desc.length > 80) desc = desc.substring(0, 80);
+function buildResult(invoices){
+  const dbgItems=document.getElementById('dbgItems');
+  const dbgResult=document.getElementById('dbgResult');
 
-    // Deduplicate: same unit+qty+netto combination
-    const sig = `${unit}|${qty}|${netto}|${desc.substring(0,30)}`;
-    if (seenSigs.has(sig)) continue;
-    seenSigs.add(sig);
-
-    items.push({unit, qty, netto, desc, line});
-    DBG.items.push({unit, qty, netto, desc: desc.substring(0,60), nums: nums.map(n=>n.toFixed(2)).join(' | ')});
+  let okres='—';
+  const firstWithDate=invoices.find(i=>i.periodTo);
+  if(firstWithDate){
+    const dt=new Date(firstWithDate.periodTo);
+    const months=['styczeń','luty','marzec','kwiecień','maj','czerwiec','lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+    okres=`${months[dt.getMonth()]} ${dt.getFullYear()}`;
   }
 
-  // ── Group by MW value → meter blocks ──
-  const mwItems = items.filter(i => i.unit === 'MW' && i.qty);
-  const mwQties = [...new Set(mwItems.map(i => i.qty.toFixed(4)))].map(parseFloat);
-  if (!mwQties.length) throw new Error('Nie znaleziono pozycji MW. Sprawdź czy plik to faktura PGE za ciepło.');
-
-  const meters = {};
-  for (const mwQty of mwQties) {
-    const key  = mwQty.toFixed(4);
-    const name = matchBuilding(mwQty) || `MW=${mwQty}`;
-    meters[key] = {mw:mwQty, name, st_rows:[], zm_rows:[], gj:null};
-    DBG.mw.push(`MW=${mwQty.toFixed(4)} → <span class="log-ok">${name}</span> · ${mwItems.filter(i=>i.qty.toFixed(4)===key).length} wierszy MW`);
-  }
-  for (const item of mwItems) {
-    const key = item.qty.toFixed(4);
-    if (meters[key]) meters[key].st_rows.push({name:item.desc, netto:item.netto});
-  }
-
-  // ── Assign GJ rows ──
-  const gjItems = items.filter(i => i.unit === 'GJ' && i.qty);
-  const gjByQty = {};
-  for (const item of gjItems) {
-    (gjByQty[item.qty.toFixed(2)] = gjByQty[item.qty.toFixed(2)] || []).push(item);
-  }
-  const meterList = Object.values(meters).sort((a,b) => b.mw - a.mw);
-  const gjGroups  = Object.entries(gjByQty).sort((a,b) => parseFloat(b[0]) - parseFloat(a[0]));
-
-  DBG.gj.push(`<span class="log-step">meterList (MW desc):</span> ${meterList.map(m=>m.name+'('+m.mw+')').join(' → ')}`);
-  DBG.gj.push(`<span class="log-step">gjGroups  (GJ desc):</span> ${gjGroups.map(([k,v])=>k+'GJ·'+v.length+'rows').join(' → ')}`);
-
-  gjGroups.forEach(([gjQtyStr, gjRows], idx) => {
-    const target = meterList[idx];
-    if (!target) { DBG.gj.push(`<span class="log-warn">⚠ Brak metra dla GJ=${gjQtyStr}</span>`); return; }
-    target.gj = parseFloat(gjQtyStr);
-    target.zm_rows.push(...gjRows.map(r=>({name:r.desc, netto:r.netto})));
-    const sum = gjRows.reduce((s,r)=>s+r.netto,0);
-    DBG.gj.push(`[${idx}] GJ=${gjQtyStr} (${gjRows.length} wierszy, ${sum.toFixed(2)} zł) → <span class="log-ok">${target.name}</span>`);
-  });
-
-  // ── Assign m³ rows ──
-  const m3Items = items.filter(i => i.unit === 'm3' && i.qty);
-  const metersWithGJ = meterList.filter(m => m.gj !== null);
-  DBG.m3.push(`<span class="log-step">m³ wierszy: ${m3Items.length} · metrów z GJ: ${metersWithGJ.length}</span>`);
-  DBG.m3.push(`<span class="log-step">metersWithGJ (MW desc):</span> ${metersWithGJ.map(m=>m.name+'(GJ='+m.gj+')').join(' → ')}`);
-  m3Items.forEach((m3, idx) => {
-    const target = metersWithGJ[idx];
-    if (target) {
-      target.zm_rows.push({name:`Nośnik ciepła ${m3.qty.toFixed(2)} m³`, netto:m3.netto});
-      DBG.m3.push(`[${idx}] m³=${m3.qty.toFixed(2)} (${m3.netto.toFixed(2)} zł) → <span class="log-ok">${target.name}</span>`);
-    } else {
-      DBG.m3.push(`<span class="log-warn">[${idx}] ⚠ Brak targetu dla m³=${m3.qty} (${m3.netto} zł)</span>`);
-    }
-  });
-
-  // ── Assign szt rows → CWWII stała ──
-  const sztItems = items.filter(i => i.unit === 'szt');
-  const cwwii = meterList.find(m => m.name === 'CWWII') || meterList[0];
-  if (!sztItems.length) DBG.szt.push('<span class="log-warn">Brak wierszy szt w tej fakturze</span>');
-  for (const szt of sztItems) {
-    cwwii.st_rows.push({name:szt.desc||'Dzierżawa licznika', netto:szt.netto});
-    DBG.szt.push(`"${szt.desc}" (${szt.netto.toFixed(2)} zł) → <span class="log-ok">${cwwii.name}</span>`);
-  }
-
-  // ── Sort by BLD_ORDER and compute ──
-  const buildings = meterList
-    .sort((a,b) => { const ia=BLD_ORDER.indexOf(a.name),ib=BLD_ORDER.indexOf(b.name); return (ia===-1?99:ia)-(ib===-1?99:ib); })
-    .map(m => {
-      const zmSum = m.zm_rows.reduce((s,r)=>s+r.netto,0);
-      const stSum = m.st_rows.reduce((s,r)=>s+r.netto,0);
-      const gj    = m.gj||1;
-      return {name:m.name, mw:m.mw, gj, cena_zmienna:zmSum/gj, stala:stSum, zm_rows:m.zm_rows, st_rows:m.st_rows};
+  // Log all rows
+  const allRows=[];
+  invoices.forEach(inv=>{
+    inv.rows.forEach(r=>{
+      const tr=document.createElement('tr');
+      tr.innerHTML=`<td style="color:var(--muted);font-size:10px">${inv.invNo}</td><td>${r.lp}</td><td>${r.desc}</td><td class="unit-${r.unit}">${r.unit}</td><td>${r.qty.toFixed(4)}</td><td style="color:var(--green)">${r.netto.toFixed(2)}</td>`;
+      dbgItems.appendChild(tr);
+      allRows.push({...r,invNo:inv.invNo});
     });
+  });
 
-  return {okres: okres||'—', buildings};
+  const mwRows  = allRows.filter(r=>r.unit==='MW');
+  const gjRows  = allRows.filter(r=>r.unit==='GJ');
+  const m3Rows  = allRows.filter(r=>r.unit==='m3');
+  const sztRows = allRows.filter(r=>r.unit==='szt');
+
+  // Distinct MW values → one building each
+  const mwQties=[...new Set(mwRows.map(r=>r.qty.toFixed(4)))].map(parseFloat);
+  dbgResult.innerHTML+=`<span class="log-step">Distinct MW:</span> ${mwQties.map(m=>m.toFixed(4)).join(', ')}<br>`;
+
+  // Init buildings
+  const buildings={};
+  mwRows.forEach(r=>{
+    const name=matchBuilding(r.qty)||`MW=${r.qty.toFixed(4)}`;
+    if(!buildings[name]){
+      buildings[name]={name,mw:r.qty,st_rows:[],zm_rows:[],gjQties:new Set(),invNos:new Set()};
+    }
+    buildings[name].st_rows.push({name:r.desc,netto:r.netto});
+    buildings[name].invNos.add(r.invNo);
+  });
+
+  // Distinct GJ values per invoice → match to buildings in that invoice
+  // Key insight: group GJ rows by (invNo + qty) → each group = one building's variable cost
+  const gjGroups={};
+  gjRows.forEach(r=>{
+    const key=`${r.invNo}|${r.qty.toFixed(2)}`;
+    (gjGroups[key]=gjGroups[key]||[]).push(r);
+  });
+
+  dbgResult.innerHTML+=`<span class="log-step">GJ groups:</span> ${Object.keys(gjGroups).join(', ')}<br><br>`;
+
+  Object.entries(gjGroups).forEach(([key,rows])=>{
+    const [invNo,gjQtyStr]=key.split('|');
+    const gjQty=parseFloat(gjQtyStr);
+    // Find building in same invoice with this GJ qty not yet assigned
+    const candidates=Object.values(buildings).filter(b=>b.invNos.has(invNo)&&!b.gjQties.has(gjQty));
+    if(candidates.length===1){
+      candidates[0].gjQties.add(gjQty);
+      rows.forEach(r=>candidates[0].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
+    } else if(candidates.length>1){
+      // Multiple buildings in same invoice with same GJ qty — assign to unmatched one
+      // in MW desc order (largest MW first matches largest GJ first)
+      const sorted=candidates.sort((a,b)=>b.mw-a.mw);
+      sorted[0].gjQties.add(gjQty);
+      rows.forEach(r=>sorted[0].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
+    }
+  });
+
+  // m3 rows → match to building by invoice
+  // Each m3 row belongs to the building in same invoice that has matching GJ sub-meter
+  // Use MW desc order within invoice: first m3 → biggest MW building
+  const m3ByInvoice={};
+  m3Rows.forEach(r=>{
+    (m3ByInvoice[r.invNo]=m3ByInvoice[r.invNo]||[]).push(r);
+  });
+  Object.entries(m3ByInvoice).forEach(([invNo,rows])=>{
+    const bldInInv=Object.values(buildings).filter(b=>b.invNos.has(invNo)).sort((a,b)=>b.mw-a.mw);
+    rows.forEach((r,idx)=>{
+      if(bldInInv[idx]) bldInInv[idx].zm_rows.push({name:r.desc,netto:r.netto});
+    });
+  });
+
+  // szt rows → CWWII stała
+  sztRows.forEach(r=>{
+    const cwwii=buildings['CWWII'];
+    if(cwwii) cwwii.st_rows.push({name:r.desc,netto:r.netto});
+  });
+
+  // Compute final
+  const result=Object.values(buildings).map(b=>{
+    const zmSum=b.zm_rows.reduce((s,r)=>s+r.netto,0);
+    const stSum=b.st_rows.reduce((s,r)=>s+r.netto,0);
+    const gjTotal=[...b.gjQties].reduce((s,v)=>s+v,0);
+    const cenaZm=gjTotal>0?zmSum/gjTotal:0;
+    dbgResult.innerHTML+=`<span class="log-ok">${b.name}</span> MW=${b.mw.toFixed(4)} GJ=${gjTotal.toFixed(2)}<br>  stała=${stSum.toFixed(2)} zm=${zmSum.toFixed(2)} → ${gjTotal>0?cenaZm.toFixed(8):'—'} PLN/GJ<br><br>`;
+    return{name:b.name,mw:b.mw,gj:gjTotal>0?gjTotal:null,cena_zmienna:cenaZm,stala:stSum,zm_rows:b.zm_rows,st_rows:b.st_rows};
+  });
+
+  result.sort((a,b)=>{
+    const ia=BLD_ORDER.indexOf(a.name),ib=BLD_ORDER.indexOf(b.name);
+    return(ia===-1?99:ia)-(ib===-1?99:ib);
+  });
+  return{okres,buildings:result};
 }
 
-// ── Known ERP values for verification (Luty 2026) ──
-const ERP_VERIFY = {
-  'CWWI':  {zm: 143.42765821, st: 5589.07},
-  'CWWII': {zm: 143.33387210, st: 5902.75},
-  'CWWIII':{zm: 181.45006693, st: 4919.11},
-  'CWWO':  {zm: 181.45007923, st: 1446.79},
-};
-
-function copyValue(el, rawVal) {
-  navigator.clipboard.writeText(String(rawVal).replace(',','.')).then(() => {
+function copyValue(el,rawVal){
+  navigator.clipboard.writeText(String(rawVal).replace(',','.')).then(()=>{
     el.classList.add('copied');
-    const orig = el.innerHTML;
-    el.innerHTML = `✓ skopiowano &nbsp;<span class="copy-hint">Ctrl+V w ERP</span>`;
-    setTimeout(()=>{ el.classList.remove('copied'); el.innerHTML=orig; }, 1500);
+    const orig=el.innerHTML;
+    el.innerHTML=`✓ skopiowano &nbsp;<span class="copy-hint">Ctrl+V w ERP</span>`;
+    setTimeout(()=>{el.classList.remove('copied');el.innerHTML=orig;},1500);
   });
 }
-window.copyValue = copyValue;
+window.copyValue=copyValue;
 
-function toggleBreakdown(btn, id) {
-  const body = document.getElementById(id);
+function toggleBreakdown(btn,id){
+  const body=document.getElementById(id);
   body.classList.toggle('open');
-  btn.textContent = body.classList.contains('open') ? '▲ ukryj szczegóły' : '▼ pokaż szczegóły';
+  btn.textContent=body.classList.contains('open')?'▲ ukryj szczegóły':'▼ pokaż szczegóły';
 }
-window.toggleBreakdown = toggleBreakdown;
+window.toggleBreakdown=toggleBreakdown;
 
-function toggleDebug() {
-  const body = document.getElementById('debugBody');
+function toggleDebug(){
+  const body=document.getElementById('debugBody');
   body.classList.toggle('open');
-  const btn = document.querySelector('.debug-toggle');
-  btn.textContent = body.classList.contains('open') ? '🔍 Ukryj log parsowania' : '🔍 Pokaż log parsowania';
+  document.querySelector('.debug-toggle').textContent=body.classList.contains('open')?'🔍 Ukryj log parsowania':'🔍 Pokaż log parsowania';
 }
-window.toggleDebug = toggleDebug;
+window.toggleDebug=toggleDebug;
 
-function renderDebug() {
-  // Items table
-  const tbl = document.getElementById('dbgItems');
-  DBG.items.forEach((item,i) => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `<td>${i+1}</td><td class="unit-${item.unit}">${item.unit}</td><td>${item.qty!==null?item.qty.toFixed(4):'—'}</td><td>${item.netto.toFixed(2)}</td><td>${item.desc}</td><td style="color:var(--muted);font-size:10px">${item.nums||''}</td>`;
-    tbl.appendChild(tr);
+function renderVerify(buildings){
+  const panel=document.getElementById('verifyPanel');
+  const rows=document.getElementById('verifyRows');
+  rows.innerHTML='';
+  let allOk=true;
+  buildings.forEach(b=>{
+    const ref=ERP_VERIFY[b.name];
+    if(!ref)return;
+    const stOk=Math.abs(b.stala-ref.st)<0.01;
+    const zmOk=Math.abs(b.cena_zmienna-ref.zm)<0.000001;
+    if(!stOk||!zmOk)allOk=false;
+    rows.innerHTML+=`<div class="verify-row">
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:70px">${b.name}</span>
+      <span>zmienna: <span class="${zmOk?'verify-ok':'verify-fail'}">${zmOk?'✓':'✗'} ${fmt8(b.cena_zmienna)} ${zmOk?'':'(ERP: '+ref.zm.toFixed(8)+')'}</span></span>
+      <span style="color:var(--muted);font-size:12px">stała: <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt2(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span></span>
+    </div>`;
   });
-  // Log sections
-  document.getElementById('dbgMW').innerHTML  = DBG.mw.join('<br>');
-  document.getElementById('dbgGJ').innerHTML  = DBG.gj.join('<br>');
-  document.getElementById('dbgM3').innerHTML  = DBG.m3.join('<br>');
-  document.getElementById('dbgSzt').innerHTML = DBG.szt.join('<br>');
-  // Raw lines
-  document.getElementById('dbgRawLines').innerHTML = DBG.rawLines
-    .map((l,i) => `<span style="color:var(--muted);margin-right:8px">${String(i+1).padStart(3,' ')}</span>${l.replace(/</g,'&lt;')}`)
-    .join('<br>');
-  document.getElementById('debug').style.display = 'block';
-}
-
-function renderVerify(buildings) {
-  const isLut = buildings.some(b => ERP_VERIFY[b.name]);
-  if (!isLut) return; // only show verify panel for Luty 2026
-
-  const panel = document.getElementById('verifyPanel');
-  const rows  = document.getElementById('verifyRows');
-  rows.innerHTML = '';
-  let allOk = true;
-
-  buildings.forEach(b => {
-    const ref = ERP_VERIFY[b.name];
-    if (!ref) return;
-    const zmOk = Math.abs(b.cena_zmienna - ref.zm) < 0.000001;
-    const stOk = Math.abs(b.stala - ref.st) < 0.01;
-    if (!zmOk || !stOk) allOk = false;
-
-    rows.innerHTML += `
-      <div class="verify-row">
-        <span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:60px">${b.name}</span>
-        <span style="color:var(--muted);font-size:12px">zmienna:</span>
-        <span class="${zmOk?'verify-ok':'verify-fail'}">${zmOk?'✓':'✗'} ${fmt8(b.cena_zmienna)} ${zmOk?'':'(ERP: '+ref.zm.toFixed(8)+')'}</span>
-        <span style="color:var(--muted);font-size:12px;margin-left:12px">stała:</span>
-        <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt8(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span>
-      </div>`;
-  });
-
-  panel.style.display = 'block';
-  // Add summary badge
-  const badge = document.createElement('div');
-  badge.style.cssText = 'margin-top:10px;font-size:12px;font-family:IBM Plex Mono,monospace;';
-  badge.innerHTML = allOk
-    ? '<span class="verify-ok">✓ Wszystkie wartości zgodne z ERP Luty 2026</span>'
-    : '<span class="verify-fail">✗ Wykryto rozbieżności — sprawdź log parsowania</span>';
+  const badge=document.createElement('div');
+  badge.style.cssText='margin-top:10px;font-size:12px;font-family:IBM Plex Mono,monospace;';
+  badge.innerHTML=allOk?'<span class="verify-ok">✓ Wszystkie wartości zgodne z ERP Luty 2026</span>':'<span class="verify-fail">✗ Wykryto rozbieżności — sprawdź log</span>';
   rows.appendChild(badge);
+  panel.style.display='block';
 }
 
-function renderResults(data) {
+function renderResults(data){
   document.getElementById('results').style.display='block';
-  document.getElementById('periodBadge').textContent = data.okres;
-  const grid = document.getElementById('buildingsGrid');
-  grid.innerHTML = '';
-  let totalZm=0, totalSt=0, totalGJ=0;
-  const warnings = [];
-
-  data.buildings.forEach((b,i) => {
-    const zmSum = b.zm_rows.reduce((s,r)=>s+r.netto,0);
-    const stSum = b.st_rows.reduce((s,r)=>s+r.netto,0);
-    totalZm+=zmSum; totalSt+=stSum; totalGJ+=b.gj;
-    if (!BLD_ORDER.includes(b.name)) warnings.push(`Nierozpoznany budynek MW=${b.mw}`);
-    const bdId  = `bd-${i}`;
-    const zmFmt = fmt8(b.cena_zmienna);
-    const stFmt = fmt8(b.stala);
-    const card  = document.createElement('div');
-    card.className = 'bld-card';
-    card.innerHTML = `
+  document.getElementById('periodBadge').textContent=data.okres;
+  const grid=document.getElementById('buildingsGrid');
+  grid.innerHTML='';
+  let totalSt=0,totalZm=0,totalGJ=0;
+  const warnings=[];
+  data.buildings.forEach((b,i)=>{
+    const zmSum=b.zm_rows.reduce((s,r)=>s+r.netto,0);
+    const stSum=b.st_rows.reduce((s,r)=>s+r.netto,0);
+    totalSt+=stSum;totalZm+=zmSum;
+    if(b.gj)totalGJ+=b.gj;
+    if(!BLD_ORDER.includes(b.name))warnings.push(`Nierozpoznany budynek MW=${b.mw.toFixed(4)}`);
+    const bdId=`bd-${i}`;
+    const zmFmt=fmt8(b.cena_zmienna);
+    const stFmt=fmt2(b.stala);
+    const card=document.createElement('div');
+    card.className='bld-card';
+    card.innerHTML=`
       <div class="bld-name">${b.name}</div>
-      <div class="bld-meta">${b.mw} MW · ${b.gj.toFixed(2)} GJ · ${data.okres}</div>
+      <div class="bld-meta">MW=${b.mw.toFixed(4)} · ${b.gj?b.gj.toFixed(2)+' GJ':'brak GJ'} · ${data.okres}</div>
       <div class="field-label">Cena ciepło (zmienna)</div>
       <div class="field-value" onclick="copyValue(this,'${zmFmt}')">${zmFmt}<span class="copy-hint">kopiuj</span></div>
       <div class="field-unit">PLN/GJ netto</div>
       <div class="field-label">Stała ciepło</div>
-      <div class="field-value" onclick="copyValue(this,'${stFmt}')">${stFmt}<span class="copy-hint">kopiuj</span></div>
+      <div class="field-value stala-only" onclick="copyValue(this,'${stFmt}')">${stFmt}<span class="copy-hint">kopiuj</span></div>
       <div class="field-unit">PLN netto/mc</div>
       <button class="breakdown-toggle" onclick="toggleBreakdown(this,'${bdId}')">▼ pokaż szczegóły</button>
       <div class="breakdown-body" id="${bdId}">
         <div class="bd-section">Zmienna (GJ + m³) · ${fmtPLN(zmSum)}</div>
         ${b.zm_rows.map(r=>`<div class="bd-row"><span>${r.name}</span><span>${fmtPLN(r.netto)}</span></div>`).join('')}
-        <div class="bd-total"><span>÷ ${b.gj.toFixed(2)} GJ</span><span>= ${zmFmt} PLN/GJ</span></div>
+        <div class="bd-total"><span>÷ ${b.gj?b.gj.toFixed(2):'?'} GJ</span><span>= ${zmFmt} PLN/GJ</span></div>
         <div class="bd-section">Stała (MW + szt) · ${fmtPLN(stSum)}</div>
         ${b.st_rows.map(r=>`<div class="bd-row"><span>${r.name}</span><span>${fmtPLN(r.netto)}</span></div>`).join('')}
         <div class="bd-total"><span>Razem stała</span><span>${fmtPLN(stSum)}</span></div>
       </div>`;
     grid.appendChild(card);
   });
-
   document.getElementById('summaryBar').innerHTML=`
     <div><div class="sum-label">Łącznie zmienna netto</div><div class="sum-val">${fmtPLN(totalZm)}</div></div>
     <div><div class="sum-label">Łącznie stała netto</div><div class="sum-val">${fmtPLN(totalSt)}</div></div>
     <div><div class="sum-label">Łączne GJ</div><div class="sum-val">${totalGJ.toFixed(2)}</div></div>
     <div><div class="sum-label">Łącznie netto</div><div class="sum-val">${fmtPLN(totalZm+totalSt)}</div></div>`;
-
-  if (warnings.length) {
-    const wb=document.getElementById('warnBox');
-    wb.textContent='⚠ '+warnings.join(' | ');
-    wb.style.display='block';
-  }
-
+  if(warnings.length){const wb=document.getElementById('warnBox');wb.textContent='⚠ '+warnings.join(' | ');wb.style.display='block';}
   renderVerify(data.buildings);
-  renderDebug();
+  document.getElementById('debug').style.display='block';
 }
-window.restart = restart;
+window.restart=restart;
 </script>
 </body>
 </html>
