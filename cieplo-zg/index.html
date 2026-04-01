@@ -81,6 +81,12 @@
   .verify-row:last-child{border-bottom:none;}
   .verify-ok{color:#22c55e;font-family:'IBM Plex Mono',monospace;font-size:11px;}
   .verify-fail{color:#ef4444;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  /* Notatka buttons */
+  .card-actions{position:absolute;top:10px;right:10px;display:flex;gap:5px;}
+  .action-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;padding:0;}
+  .action-btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface);}
+  .action-btn.ok{border-color:#22c55e !important;color:#22c55e !important;background:rgba(34,197,94,.08) !important;}
+  .bld-card{position:relative;}
   footer{text-align:center;padding:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
 </style>
 </head>
@@ -153,6 +159,7 @@
 <footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
 
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
 const ERP_VERIFY = {
   'CWWI':  {zm:143.42765821, st:5589.07},
@@ -415,6 +422,144 @@ function renderVerify(buildings){
   panel.style.display='block';
 }
 
+function generateNotatka(b, okres) {
+  const zmSum = b.zm_rows.reduce((s,r)=>s+r.netto, 0);
+  const stSum = b.st_rows.reduce((s,r)=>s+r.netto, 0);
+  const gjQty = b.gj ? b.gj.toFixed(2) : '?';
+
+  // Header
+  let lines = [];
+  lines.push(`CIEPŁO ${okres} — ${b.name}`);
+  lines.push('');
+
+  // Invoice rows table (text format matching manager's note style)
+  lines.push('Pozycje faktury:');
+  b.zm_rows.forEach(r => lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
+  b.st_rows.forEach(r => lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
+  lines.push('');
+
+  // Zmienna formula
+  const zmParts = b.zm_rows.map(r => r.netto.toFixed(2));
+  lines.push(`Ciepło ${okres}`);
+  lines.push(`zmienna = (${zmParts.join(' + ')}) / ${gjQty} = ${zmSum.toFixed(2)} / ${gjQty} = ${b.cena_zmienna.toFixed(8)}`);
+
+  // Stała formula
+  const stParts = b.st_rows.map(r => r.netto.toFixed(2));
+  lines.push(`stała = ${stParts.join(' + ')} = ${stSum.toFixed(2)}`);
+
+  return lines.join('\n');
+}
+
+// 📋 Copy rich content (PNG + text) to clipboard as HTML — one Ctrl+V in Enova
+async function copyNotatkaText(btn, b, okres) {
+  const card = btn.closest('.bld-card');
+
+  // 1 — Expand details for capture
+  const breakdown = card.querySelector('.breakdown-body');
+  const wasOpen = breakdown.classList.contains('open');
+  if (!wasOpen) {
+    breakdown.classList.add('open');
+    const toggle = card.querySelector('.breakdown-toggle');
+    if (toggle) toggle.textContent = '▲ ukryj szczegóły';
+  }
+
+  // 2 — Hide action buttons during capture
+  const actions = card.querySelector('.card-actions');
+  actions.style.visibility = 'hidden';
+
+  try {
+    // 3 — Render card to canvas
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#181c27',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+    });
+
+    // 4 — Convert canvas to base64 PNG
+    const dataUrl = canvas.toDataURL('image/png');
+
+    // 5 — Generate text formula
+    const text = generateNotatka(b, okres);
+    const textHtml = text.split('\n').map(l => `<p>${l || '&nbsp;'}</p>`).join('');
+
+    // 6 — Build HTML with image + text
+    const html = `<div>
+      <img src="${dataUrl}" style="max-width:100%;display:block;margin-bottom:8px;" />
+      ${textHtml}
+    </div>`;
+
+    // 7 — Copy to clipboard as text/html
+    await navigator.clipboard.write([
+      new ClipboardItem({
+        'text/html': new Blob([html], {type:'text/html'}),
+        'text/plain': new Blob([text], {type:'text/plain'}),
+      })
+    ]);
+
+    btn.textContent = '✓';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('ok'); }, 2500);
+
+  } catch(e) {
+    console.error('Clipboard error:', e);
+    // Fallback: copy text only
+    const text = generateNotatka(b, okres);
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('ok'); }, 2000);
+  }
+
+  actions.style.visibility = 'visible';
+}
+window.copyNotatkaText = copyNotatkaText;
+
+// 📷 Capture card as PNG and download
+async function copyNotatkaPng(btn, card) {
+  // Expand details if not open
+  const breakdown = card.querySelector('.breakdown-body');
+  const wasOpen = breakdown.classList.contains('open');
+  if (!wasOpen) {
+    breakdown.classList.add('open');
+    const toggle = card.querySelector('.breakdown-toggle');
+    if (toggle) toggle.textContent = '▲ ukryj szczegóły';
+  }
+
+  // Hide action buttons during capture
+  const actions = card.querySelector('.card-actions');
+  actions.style.visibility = 'hidden';
+
+  try {
+    const canvas = await html2canvas(card, {
+      backgroundColor: '#181c27',
+      scale: 2,
+      logging: false,
+      useCORS: true,
+    });
+
+    const b = card._bldData;
+    const okres = card._okres;
+    const a = document.createElement('a');
+    a.download = `cieplo_${b.name}_${okres.replace(' ','_')}.png`;
+    a.href = canvas.toDataURL('image/png');
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+
+    btn.textContent = '✓';
+    btn.classList.add('ok');
+    setTimeout(() => { btn.textContent = '📷'; btn.classList.remove('ok'); }, 2500);
+  } catch(e) {
+    console.error('html2canvas error:', e);
+    btn.textContent = '✗';
+    setTimeout(() => { btn.textContent = '📷'; }, 2000);
+  }
+
+  actions.style.visibility = 'visible';
+}
+window.copyNotatkaPng = copyNotatkaPng;
+
 function renderResults(data){
   document.getElementById('results').style.display='block';
   document.getElementById('periodBadge').textContent=data.okres;
@@ -433,7 +578,14 @@ function renderResults(data){
     const stFmt=fmt2(b.stala);
     const card=document.createElement('div');
     card.className='bld-card';
+    // Store building data on element for notatka generator
+    card._bldData = b;
+    card._okres = data.okres;
     card.innerHTML=`
+      <div class="card-actions">
+        <button class="action-btn" title="Kopiuj notatkę tekstową → Ctrl+V do pola Notatka w Enova" onclick="copyNotatkaText(this, this.closest('.bld-card')._bldData, this.closest('.bld-card')._okres)">📋</button>
+        <button class="action-btn" title="Pobierz PNG kalkulacji → załącz w Enova" onclick="copyNotatkaPng(this, this.closest('.bld-card'))">📷</button>
+      </div>
       <div class="bld-name">${b.name}</div>
       <div class="bld-meta">MW=${b.mw.toFixed(4)} · ${b.gj?b.gj.toFixed(2)+' GJ':'brak GJ'} · ${data.okres}</div>
       <div class="field-label">Cena ciepło (zmienna)</div>
