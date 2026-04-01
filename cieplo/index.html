@@ -280,6 +280,7 @@ function parseInvoices(lines) {
   // Each relevant line has: description | unit | qty | price | ... | netto
   // Units we care about: GJ, MW, m3/m³, szt
   const items = [];
+  const seenSigs = new Set(); // deduplicate identical lines
 
   for (const line of lines) {
     // Must contain a unit keyword
@@ -289,10 +290,11 @@ function parseInvoices(lines) {
 
     // Get all decimal numbers from the line
     const nums = [...line.matchAll(/(\d[\d\s]*[,.][\d]{2})/g)].map(m => parseNum(m[1])).filter(n => !isNaN(n) && n > 0);
-    if (!nums.length) continue;
+    if (nums.length < 2) continue;
 
-    // netto is the last positive number on the line
-    const netto = nums[nums.length - 1];
+    // Column order from pdf.js: ...wartość brutto | wartość netto | kwota VAT
+    // So netto = second-to-last number, VAT = last number
+    const netto = nums[nums.length - 2];
 
     // Determine unit
     let unit = null;
@@ -313,6 +315,11 @@ function parseInvoices(lines) {
     const unitIdx = line.search(new RegExp('\\b'+unit+'\\b','i'));
     let desc = unitIdx > 0 ? line.substring(0, unitIdx).replace(/^\d+\s*/,'').trim() : unit;
     if (desc.length > 80) desc = desc.substring(0, 80);
+
+    // Deduplicate: same unit+qty+netto combination
+    const sig = `${unit}|${qty}|${netto}|${desc.substring(0,30)}`;
+    if (seenSigs.has(sig)) continue;
+    seenSigs.add(sig);
 
     items.push({unit, qty, netto, desc, line});
     DBG.items.push({unit, qty, netto, desc: desc.substring(0,60)});
