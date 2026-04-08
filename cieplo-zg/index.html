@@ -308,8 +308,9 @@ function buildResult(invoices){
     buildings[name].invNos.add(r.invNo);
   });
 
-  // Distinct GJ values per invoice → match to buildings in that invoice
-  // Key insight: group GJ rows by (invNo + qty) → each group = one building's variable cost
+  // Distinct GJ values per invoice → match to buildings by description text
+  // Key: "Wentylacja" rows → CWWII, "Technologia" → CWWIII
+  // Plain "CO" / plain "CO" rows → CWWI or CWWO (by MW desc within invoice)
   const gjGroups={};
   gjRows.forEach(r=>{
     const key=`${r.invNo}|${r.qty.toFixed(2)}`;
@@ -318,34 +319,59 @@ function buildResult(invoices){
 
   dbgResult.innerHTML+=`<span class="log-step">GJ groups:</span> ${Object.keys(gjGroups).join(', ')}<br><br>`;
 
-  // Sort GJ groups by GJ qty desc — largest GJ → largest MW building
-  const gjGroupsSorted=Object.entries(gjGroups).sort((a,b)=>parseFloat(b[0].split('|')[1])-parseFloat(a[0].split('|')[1]));
+  // Strategy:
+  // 1. Named groups (Wentylacja → CWWII, Technologia → CWWIII) assigned first
+  // 2. Remaining plain CO groups assigned to remaining buildings by MW desc
+  const assignedBldNames = new Set();
 
+  // Pass 1: named groups
+  Object.entries(gjGroups).forEach(([key,rows])=>{
+    const [invNo] = key.split('|');
+    const desc = rows[0].desc;
+    let targetName = null;
+    if (/Wentylacja/i.test(desc))   targetName = 'CWWII';
+    if (/Technologia/i.test(desc))  targetName = 'CWWIII';
+    if (targetName && buildings[targetName] && buildings[targetName].gjQties.size===0) {
+      const gjQty = parseFloat(key.split('|')[1]);
+      buildings[targetName].gjQties.add(gjQty);
+      rows.forEach(r=>buildings[targetName].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
+      assignedBldNames.add(targetName);
+      dbgResult.innerHTML+=`GJ=${gjQty} (${desc.substring(0,20)}) → <span class="log-ok">${targetName}</span> [named]<br>`;
+    }
+  });
+
+  // Pass 2: plain CO groups → remaining unassigned buildings, by MW desc within invoice
+  const gjGroupsSorted=Object.entries(gjGroups).sort((a,b)=>parseFloat(b[0].split('|')[1])-parseFloat(a[0].split('|')[1]));
   gjGroupsSorted.forEach(([key,rows])=>{
     const [invNo,gjQtyStr]=key.split('|');
     const gjQty=parseFloat(gjQtyStr);
-    // Find buildings in same invoice that have NOT yet received any GJ rows
+    const desc=rows[0].desc;
+    // Skip already-assigned named groups
+    if (/Wentylacja/i.test(desc) || /Technologia/i.test(desc)) return;
     const candidates=Object.values(buildings)
       .filter(b=>b.invNos.has(invNo) && b.gjQties.size===0)
-      .sort((a,b)=>b.mw-a.mw); // largest MW first
+      .sort((a,b)=>b.mw-a.mw);
     if(candidates.length>0){
       candidates[0].gjQties.add(gjQty);
       rows.forEach(r=>candidates[0].zm_rows.push({name:r.desc,netto:r.netto,gjQty}));
-      dbgResult.innerHTML+=`GJ=${gjQty} → <span class="log-ok">${candidates[0].name}</span><br>`;
+      dbgResult.innerHTML+=`GJ=${gjQty} (${desc.substring(0,20)}) → <span class="log-ok">${candidates[0].name}</span> [plain CO]<br>`;
     } else {
       dbgResult.innerHTML+=`<span class="log-warn">⚠ Brak kandydata dla GJ=${gjQty} w fakturze ${invNo}</span><br>`;
     }
   });
 
-  // m3 rows → match to building by invoice
-  // Each m3 row belongs to the building in same invoice that has matching GJ sub-meter
-  // Use MW desc order within invoice: first m3 → biggest MW building
+  // m3 rows (Nośnik ciepła) → belong to buildings that have Wentylacja/CO
+  // First m3 in invoice → CWWII (Wentylacja meter), second → CWWI (CO meter)
+  // General rule: sort buildings in invoice by MW desc, assign m3 in order
   const m3ByInvoice={};
   m3Rows.forEach(r=>{
     (m3ByInvoice[r.invNo]=m3ByInvoice[r.invNo]||[]).push(r);
   });
   Object.entries(m3ByInvoice).forEach(([invNo,rows])=>{
-    const bldInInv=Object.values(buildings).filter(b=>b.invNos.has(invNo)).sort((a,b)=>b.mw-a.mw);
+    // Buildings in this invoice that have GJ (Wentylacja first, then CO by MW desc)
+    const bldInInv=Object.values(buildings)
+      .filter(b=>b.invNos.has(invNo) && b.gjQties.size>0)
+      .sort((a,b)=>b.mw-a.mw);
     rows.forEach((r,idx)=>{
       if(bldInInv[idx]) bldInInv[idx].zm_rows.push({name:r.desc,netto:r.netto});
     });
