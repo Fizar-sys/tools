@@ -596,12 +596,16 @@ function renderResults(data){
   data.buildings.forEach((b,i)=>{
     const zmSum=b.zm_rows.reduce((s,r)=>s+r.netto,0);
     const stSum=b.st_rows.reduce((s,r)=>s+r.netto,0);
+    // szt rows = Dzierżawa licznika + Opłata za załącznik — excluded from building subtotal
+    const sztSum=b.st_rows.filter(r=>/dzier[żz]awa|za\u0142\u0105cznik|zalacznik/i.test(r.name)).reduce((s,r)=>s+r.netto,0);
+    const subtotal=zmSum+stSum-sztSum;
     totalSt+=stSum;totalZm+=zmSum;
     if(b.gj)totalGJ+=b.gj;
     if(!BLD_ORDER.includes(b.name))warnings.push(`Nierozpoznany budynek MW=${b.mw.toFixed(4)}`);
     const bdId=`bd-${i}`;
     const zmFmt=fmt8(b.cena_zmienna);
     const stFmt=fmt2(b.stala);
+    const subtotalFmt=fmt2(subtotal);
     const card=document.createElement('div');
     card.className='bld-card';
     // Store building data on element for notatka generator
@@ -620,6 +624,9 @@ function renderResults(data){
       <div class="field-label">Stała ciepło</div>
       <div class="field-value stala-only" onclick="copyValue(this,'${stFmt}')">${stFmt}<span class="copy-hint">kopiuj</span></div>
       <div class="field-unit">PLN netto/mc</div>
+      <div class="field-label">Razem netto budynek</div>
+      <div class="field-value" style="color:var(--text);background:rgba(226,232,240,.06);border-color:rgba(226,232,240,.12);" onclick="copyValue(this,'${subtotalFmt}')">${subtotalFmt}<span class="copy-hint">kopiuj</span></div>
+      <div class="field-unit">PLN netto/mc · bez dzierżawy i załącznika</div>
       <button class="breakdown-toggle" onclick="toggleBreakdown(this,'${bdId}')">▼ pokaż szczegóły</button>
       <div class="breakdown-body" id="${bdId}">
         <div class="bd-section">Zmienna (GJ + m³) · ${fmtPLN(zmSum)}</div>
@@ -628,6 +635,8 @@ function renderResults(data){
         <div class="bd-section">Stała (MW + szt) · ${fmtPLN(stSum)}</div>
         ${b.st_rows.map(r=>`<div class="bd-row"><span>${r.name}</span><span>${fmtPLN(r.netto)}</span></div>`).join('')}
         <div class="bd-total"><span>Razem stała</span><span>${fmtPLN(stSum)}</span></div>
+        ${sztSum>0?`<div class="bd-row" style="color:var(--muted);font-style:italic"><span>− Dzierżawa/Załącznik (wykluczone)</span><span style="color:var(--muted)">−${fmtPLN(sztSum)}</span></div>`:''}
+        <div class="bd-total" style="border-top:1px solid var(--accent);color:var(--text);margin-top:4px;padding-top:5px"><span>= Razem budynek</span><span>${fmtPLN(subtotal)}</span></div>
       </div>`;
     grid.appendChild(card);
   });
