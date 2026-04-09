@@ -307,7 +307,7 @@ function buildResult(invoices){
 }
 
 function copyValue(el,rawVal){
-  navigator.clipboard.writeText(String(rawVal).replace(',','.')).then(()=>{
+  navigator.clipboard.writeText(String(rawVal)).then(()=>{
     el.classList.add('copied');
     const orig=el.innerHTML;
     el.innerHTML=`✓ skopiowano &nbsp;<span class="copy-hint">Ctrl+V w ERP</span>`;
