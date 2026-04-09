@@ -52,6 +52,10 @@
   .results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
   .results-title{font-size:20px;font-weight:500;}
   .period-badge{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:4px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);}
+  .month-tabs{display:flex;gap:6px;flex-wrap:wrap;}
+  .month-tab{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:5px 14px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);cursor:pointer;transition:all .15s;}
+  .month-tab:hover{border-color:var(--blue);color:var(--text);}
+  .month-tab.active{background:rgba(96,165,250,.15);border-color:var(--blue);color:var(--blue);font-weight:600;}
   .btn-restart{padding:8px 18px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;}
   .btn-restart:hover{color:var(--text);border-color:var(--blue);}
 
@@ -168,7 +172,7 @@
     <div class="results-header">
       <div class="results-title">Wyniki · gotowe do ERP</div>
       <div style="display:flex;gap:8px;align-items:center;">
-        <div class="period-badge" id="periodBadge">—</div>
+        <div class="month-tabs" id="monthTabs"><div class="period-badge">—</div></div>
         <button class="btn-restart" onclick="restart()">↺ Nowe pliki</button>
       </div>
     </div>
@@ -296,10 +300,21 @@ async function processAll() {
   document.getElementById('processingText').textContent = 'Wczytuję pliki ZIP…';
 
   try {
-    // seller[ppe] = netto, distr[ppe] = netto, kwh[ppe] = kwh
-    const seller = {}, distr = {}, kwh = {};
-    let period = null;
+    // allMonths[monthKey] = {seller:{ppe:netto}, distr:{ppe:netto}, kwh:{ppe:kwh}}
+    const allMonths = {};
     const warnings = [];
+
+    function monthKey(pf) {
+      if (!pf) return null;
+      const m = {'01':'Styczeń','02':'Luty','03':'Marzec','04':'Kwiecień',
+                 '05':'Maj','06':'Czerwiec','07':'Lipiec','08':'Sierpień',
+                 '09':'Wrzesień','10':'Październik','11':'Listopad','12':'Grudzień'};
+      const mo = pf.slice(5,7); const yr = pf.slice(0,4);
+      return m[mo] ? `${m[mo]} ${yr}` : pf;
+    }
+    function ensureMonth(mk) {
+      if (!allMonths[mk]) allMonths[mk] = {seller:{},distr:{},kwh:{}};
+    }
 
     for (const file of allFiles) {
       const zip = await JSZip.loadAsync(await file.arrayBuffer());
@@ -310,55 +325,45 @@ async function processAll() {
         const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
         if (doc.querySelector('parsererror')) continue;
 
-        // Skip correction invoices
         const rodzaj = getVal(doc, 'RodzajFaktury');
         if (rodzaj === 'KOR') continue;
 
         const nipSeller = getVal(doc, 'NIP');
         const pf = getVal(doc, 'P_6_Od');
-        const pt = getVal(doc, 'P_6_Do');
-        if (pf && !period) period = {f:pf, t:pt};
+        const mk = monthKey(pf);
+        if (!mk) continue;
+        ensureMonth(mk);
 
         const isSeller = !!SELLER_NIP[nipSeller];
         const isDistr  = !!DISTR_NIP[nipSeller];
         if (!isSeller && !isDistr) continue;
 
-        // Aggregate per PPE
-        const rows = doc.getElementsByTagName('*');
-        let currentPPE = null;
         const ppeNetto = {}, ppeKwh = {};
-
-        for (const node of rows) {
+        for (const node of doc.getElementsByTagName('*')) {
           if (node.localName !== 'FaWiersz') continue;
           const p7  = (getVal(node,'P_7') || '').trim();
           const p8a = (getVal(node,'P_8A') || '').trim();
           const p8b = parseFloat(getVal(node,'P_8B') || 0);
           const p11 = parseFloat(getVal(node,'P_11') || 0);
-
           const ppe = extractPPE(p7);
           if (!ppe || !PPE_REG[ppe]) continue;
-
-          ppeNetto[ppe] = (ppeNetto[ppe] || 0) + p11;
-
-          // kWh from seller only (authoritative)
+          ppeNetto[ppe] = (ppeNetto[ppe]||0) + p11;
           if (isSeller) {
-            if (p8a === 'kWh' && p8b > 0)  ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b;
-            if (p8a === 'MWh' && p8b > 0)  ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b*1000;
+            if (p8a==='kWh' && p8b>0) ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b;
+            if (p8a==='MWh' && p8b>0) ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b*1000;
           }
         }
-
-        // Store
-        for (const [ppe, netto] of Object.entries(ppeNetto)) {
-          if (isSeller) seller[ppe] = (seller[ppe]||0) + netto;
-          if (isDistr)  distr[ppe]  = (distr[ppe] ||0) + netto;
+        for (const [ppe,netto] of Object.entries(ppeNetto)) {
+          if (isSeller) allMonths[mk].seller[ppe] = (allMonths[mk].seller[ppe]||0)+netto;
+          if (isDistr)  allMonths[mk].distr[ppe]  = (allMonths[mk].distr[ppe] ||0)+netto;
         }
-        for (const [ppe, k] of Object.entries(ppeKwh)) {
-          kwh[ppe] = (kwh[ppe]||0) + k;
+        for (const [ppe,k] of Object.entries(ppeKwh)) {
+          allMonths[mk].kwh[ppe] = (allMonths[mk].kwh[ppe]||0)+k;
         }
       }
     }
 
-    parsedData = {seller, distr, kwh, period, warnings};
+    parsedData = {allMonths, currentMonth: Object.keys(allMonths).sort()[0], warnings};
     document.getElementById('processing').style.display = 'none';
     renderResults();
 
@@ -389,15 +394,34 @@ window.copyValue = copyValue;
 
 // ── Render ───────────────────────────────────────────────────────────────
 function renderResults() {
-  const {seller, distr, kwh, period, warnings} = parsedData;
+  const {allMonths, currentMonth, warnings} = parsedData;
+  const monthKeys = Object.keys(allMonths).sort((a,b)=>{
+    const order = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+                   'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+    const ma = order.findIndex(m=>a.startsWith(m));
+    const mb = order.findIndex(m=>b.startsWith(m));
+    return ma - mb;
+  });
 
-  // Period badge
-  if (period) {
-    const dt = new Date(period.f);
-    const months = ['styczeń','luty','marzec','kwiecień','maj','czerwiec',
-                    'lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
-    document.getElementById('periodBadge').textContent =
-      `${months[dt.getMonth()]} ${dt.getFullYear()}`;
+  // Month tabs
+  const mtEl = document.getElementById('monthTabs');
+  mtEl.innerHTML = '';
+  if (monthKeys.length === 1) {
+    // Single month — show as static badge
+    const badge = document.createElement('div');
+    badge.className = 'period-badge';
+    badge.textContent = monthKeys[0];
+    mtEl.appendChild(badge);
+  } else {
+    // Multiple months — show as clickable tabs
+    monthKeys.forEach((mk, i) => {
+      const tab = document.createElement('button');
+      tab.className = 'month-tab' + (mk===parsedData.currentMonth?' active':'');
+      tab.textContent = mk;
+      tab.dataset.month = mk;
+      tab.onclick = () => switchMonth(mk);
+      mtEl.appendChild(tab);
+    });
   }
 
   // Warnings
@@ -407,7 +431,7 @@ function renderResults() {
     wb.style.display = 'block';
   }
 
-  // Tabs
+  // Property tabs
   const tabsEl = document.getElementById('tabs');
   tabsEl.innerHTML = '';
   PROP_ORDER.forEach((prop, i) => {
@@ -419,7 +443,13 @@ function renderResults() {
     tabsEl.appendChild(tab);
   });
 
-  // Panels
+  renderPanels();
+  document.getElementById('results').style.display = 'block';
+}
+
+function renderPanels() {
+  const {allMonths, currentMonth} = parsedData;
+  const {seller, distr, kwh} = allMonths[currentMonth] || {seller:{},distr:{},kwh:{}};
   const panelsEl = document.getElementById('propPanels');
   panelsEl.innerHTML = '';
   PROP_ORDER.forEach((prop, i) => {
@@ -429,9 +459,19 @@ function renderResults() {
     panel.innerHTML = buildPropertyPanel(prop, seller, distr, kwh);
     panelsEl.appendChild(panel);
   });
-
-  document.getElementById('results').style.display = 'block';
 }
+
+function switchMonth(mk) {
+  parsedData.currentMonth = mk;
+  document.querySelectorAll('.month-tab').forEach(t=>
+    t.classList.toggle('active', t.dataset.month===mk));
+  // Re-render panels with new month data
+  renderPanels();
+  // Keep current property tab active
+  const activeProp = document.querySelector('.tab.active')?.dataset.prop || PROP_ORDER[0];
+  switchTab(activeProp);
+}
+window.switchMonth = switchMonth;
 
 function switchTab(prop) {
   document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.prop===prop));
