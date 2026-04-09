@@ -1,0 +1,582 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fizar — Kalkulator Prądu</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+  :root {
+    --bg:#0f1117; --surface:#181c27; --surface2:#1e2435;
+    --border:#2a3148; --accent:#3b82f6; --text:#e2e8f0; --muted:#64748b;
+    --green:#22c55e; --green-bg:rgba(34,197,94,.10);
+    --amber:#f59e0b; --amber-bg:rgba(245,158,11,.08);
+    --blue:#60a5fa; --blue-bg:rgba(96,165,250,.08);
+    --red:#ef4444;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:14px;min-height:100vh;}
+  header{background:var(--surface);border-bottom:1px solid var(--border);padding:18px 32px;display:flex;align-items:center;gap:16px;}
+  .logo{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:var(--accent);}
+  .logo span{color:var(--muted);font-weight:400;}
+  header p{color:var(--muted);font-size:12px;margin-left:auto;}
+  main{max-width:1100px;margin:0 auto;padding:40px 24px;}
+  h1{font-size:26px;font-weight:500;margin-bottom:6px;}
+  h1 span{color:var(--blue);}
+  .subtitle{color:var(--muted);font-size:13px;margin-bottom:36px;}
+
+  /* Upload zone */
+  .upload-zone{border:2px dashed var(--border);border-radius:12px;padding:48px 32px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:var(--surface);}
+  .upload-zone:hover,.upload-zone.drag{border-color:var(--blue);background:rgba(96,165,250,.04);}
+  .upload-zone h2{font-size:18px;font-weight:500;margin-bottom:8px;}
+  .upload-zone p{color:var(--muted);font-size:13px;margin-bottom:6px;}
+  .upload-zone input{display:none;}
+  .btn-upload{display:inline-block;margin-top:18px;padding:10px 24px;background:var(--blue);color:#000;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s;}
+  .btn-upload:hover{opacity:.85;}
+  .file-list{margin-top:16px;text-align:left;display:none;}
+  .file-item{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:3px 0;display:flex;gap:8px;align-items:center;}
+  .file-ok{color:var(--green);}
+  .file-warn{color:var(--amber);}
+
+  /* Process button */
+  .btn-process{display:none;margin-top:20px;padding:12px 32px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;}
+  .btn-process:hover{opacity:.85;}
+
+  /* Spinner */
+  #processing{display:none;text-align:center;padding:48px;}
+  .spinner{width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 16px;}
+  @keyframes spin{to{transform:rotate(360deg);}}
+
+  /* Results */
+  #results{display:none;}
+  .results-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;flex-wrap:wrap;gap:12px;}
+  .results-title{font-size:20px;font-weight:500;}
+  .period-badge{font-family:'IBM Plex Mono',monospace;font-size:12px;padding:4px 12px;background:var(--surface2);border:1px solid var(--border);border-radius:20px;color:var(--muted);}
+  .btn-restart{padding:8px 18px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;}
+  .btn-restart:hover{color:var(--text);border-color:var(--blue);}
+
+  /* Property tabs */
+  .tabs{display:flex;gap:4px;margin-bottom:24px;flex-wrap:wrap;}
+  .tab{padding:8px 18px;background:var(--surface);border:1px solid var(--border);border-radius:6px;font-size:13px;cursor:pointer;transition:all .15s;color:var(--muted);}
+  .tab:hover{border-color:var(--blue);color:var(--text);}
+  .tab.active{background:rgba(96,165,250,.12);border-color:var(--blue);color:var(--blue);font-weight:600;}
+
+  /* Property panel */
+  .prop-panel{display:none;}
+  .prop-panel.active{display:block;}
+
+  /* Consumption row */
+  .consumption-bar{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 20px;display:flex;gap:32px;flex-wrap:wrap;margin-bottom:20px;align-items:center;}
+  .cons-item{display:flex;flex-direction:column;gap:3px;}
+  .cons-label{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+  .cons-val{font-family:'IBM Plex Mono',monospace;font-size:15px;font-weight:600;color:var(--text);}
+  .cons-source{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+
+  /* Section headers */
+  .section-hdr{font-size:12px;font-weight:600;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin:20px 0 10px;display:flex;align-items:center;gap:8px;}
+  .section-hdr::after{content:'';flex:1;height:1px;background:var(--border);}
+
+  /* Group cards grid */
+  .groups-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px;margin-bottom:8px;}
+
+  /* Group card */
+  .grp-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;position:relative;}
+  .grp-card.seller{border-color:rgba(96,165,250,.25);}
+  .grp-card.distr{border-color:rgba(245,158,11,.25);}
+  .grp-card.total{border-color:rgba(34,197,94,.35);background:rgba(34,197,94,.04);}
+  .grp-badge{font-family:'IBM Plex Mono',monospace;font-size:10px;font-weight:600;padding:2px 8px;border-radius:10px;margin-bottom:10px;display:inline-block;}
+  .grp-badge.seller{background:rgba(96,165,250,.12);color:var(--blue);}
+  .grp-badge.distr{background:rgba(245,158,11,.10);color:var(--amber);}
+  .grp-badge.total{background:rgba(34,197,94,.12);color:var(--green);}
+  .grp-obj{font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;color:var(--text);margin-bottom:2px;}
+  .grp-ppes{font-size:11px;color:var(--muted);margin-bottom:12px;}
+
+  /* Line items */
+  .line-item{display:flex;justify-content:space-between;font-size:11px;padding:3px 0;border-bottom:1px solid rgba(42,49,72,.5);}
+  .line-item:last-of-type{border-bottom:none;}
+  .line-ppe{color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+  .line-netto{color:var(--text);font-family:'IBM Plex Mono',monospace;}
+  .line-sum{display:flex;justify-content:space-between;font-size:11px;font-weight:600;margin-top:6px;padding-top:6px;border-top:1px solid var(--border);}
+  .line-sum-lbl{color:var(--muted);}
+  .line-sum-val{font-family:'IBM Plex Mono',monospace;color:var(--text);}
+
+  /* Price field — copyable */
+  .price-field{margin-top:12px;}
+  .price-label{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.06em;text-transform:uppercase;margin-bottom:4px;}
+  .price-value{font-family:'IBM Plex Mono',monospace;font-size:14px;font-weight:600;padding:8px 10px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:all .15s;user-select:all;}
+  .price-value.seller-price{color:var(--blue);background:var(--blue-bg);border:1px solid rgba(96,165,250,.2);}
+  .price-value.distr-price{color:var(--amber);background:var(--amber-bg);border:1px solid rgba(245,158,11,.2);}
+  .price-value.total-price{color:var(--green);background:var(--green-bg);border:1px solid rgba(34,197,94,.2);}
+  .price-value:hover{filter:brightness(1.15);}
+  .price-value.copied{background:rgba(34,197,94,.25) !important;color:#fff !important;}
+  .copy-hint{font-size:10px;opacity:.5;font-weight:400;}
+  .price-unit{font-size:10px;color:var(--muted);margin-top:3px;font-family:'IBM Plex Mono',monospace;}
+
+  /* Total price row — standalone full-width */
+  .total-row{background:var(--surface);border:1px solid rgba(34,197,94,.35);border-radius:10px;padding:16px 20px;margin-top:12px;display:flex;align-items:center;gap:24px;flex-wrap:wrap;}
+  .total-row-lbl{font-size:12px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;min-width:140px;}
+  .total-row-grps{display:flex;gap:12px;flex-wrap:wrap;flex:1;}
+  .total-grp{display:flex;flex-direction:column;gap:4px;}
+  .total-grp-obj{font-size:11px;color:var(--muted);font-family:'IBM Plex Mono',monospace;}
+
+  /* Error / warn */
+  .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:12px 16px;color:#fca5a5;font-size:13px;margin-top:12px;display:none;}
+  .warn-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:10px 14px;color:var(--amber);font-size:12px;margin-bottom:16px;display:none;}
+
+  /* Missing invoice notice */
+  .missing-notice{background:rgba(245,158,11,.06);border:1px dashed rgba(245,158,11,.3);border-radius:8px;padding:12px 16px;color:var(--amber);font-size:12px;font-family:'IBM Plex Mono',monospace;}
+
+  footer{text-align:center;padding:32px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">FIZAR<span>.tools</span></div>
+  <div style="width:1px;height:24px;background:var(--border)"></div>
+  <span style="font-size:13px;color:var(--muted)">Kalkulator Prądu · Wszystkie nieruchomości</span>
+  <p>Tauron Sprzedaż · ENEA Operator · Energa-Operator · TAURON Dystrybucja</p>
+</header>
+
+<main>
+  <h1>Kalkulator <span>Prądu</span></h1>
+  <p class="subtitle">Wczytaj pliki ZIP z fakturami KSeF XML — zakup (Tauron Sprzedaż) i dystrybucja (ENEA / Energa / TAURON Dystr.). Przetwarzanie lokalne, pliki nie opuszczają przeglądarki.</p>
+
+  <div id="panel-upload">
+    <div class="upload-zone" id="dropzone">
+      <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#60a5fa" stroke-width="1.5" style="margin:0 auto 14px;display:block">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/>
+        <line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <h2>Upuść pliki ZIP z fakturami KSeF XML</h2>
+      <p>Możesz wczytać kilka plików ZIP naraz — zakup i dystrybucja razem</p>
+      <p style="font-size:11px;color:var(--muted)">Wymagane: Tauron AN290795 · Tauron BN045114 · ENEA (4×) · Energa GRUDZ · Energa MALBO · TAURON Dystr.</p>
+      <input type="file" id="fileInput" accept=".zip" multiple>
+      <label for="fileInput" class="btn-upload">Wybierz pliki ZIP</label>
+      <div class="file-list" id="fileList"></div>
+    </div>
+    <div class="error-box" id="errorBox"></div>
+    <button class="btn-process" id="btnProcess" onclick="processAll()">▶ Przetwórz faktury</button>
+  </div>
+
+  <div id="processing">
+    <div class="spinner"></div>
+    <p style="color:var(--muted)" id="processingText">Wczytuję pliki…</p>
+  </div>
+
+  <div id="results">
+    <div class="warn-box" id="warnBox"></div>
+    <div class="results-header">
+      <div class="results-title">Wyniki · gotowe do ERP</div>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div class="period-badge" id="periodBadge">—</div>
+        <button class="btn-restart" onclick="restart()">↺ Nowe pliki</button>
+      </div>
+    </div>
+
+    <div class="tabs" id="tabs"></div>
+
+    <div id="propPanels"></div>
+  </div>
+</main>
+
+<footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+<script>
+// ── PPE register ────────────────────────────────────────────────────────
+const PPE_REG = {
+  '590310600000218452': {prop:'ZIELON', obj:'ZIELON_O',    tariff:'C22B', kw:50},
+  '590310600000218469': {prop:'ZIELON', obj:'ZIELON_CWWI', tariff:'C22B', kw:60},
+  '590310600000218476': {prop:'ZIELON', obj:'ZIELON_CWWII',tariff:'C22B', kw:80},
+  '590310600000218483': {prop:'ZIELON', obj:'ZIELON_CWWIII',tariff:'C22B',kw:80},
+  '590243892020523190': {prop:'GRUDZ',  obj:'GRUDZ_O',     tariff:'C23',  kw:50},
+  '590243892021178726': {prop:'GRUDZ',  obj:'GRUDZ_O',     tariff:'C21',  kw:26},
+  '590243892020872335': {prop:'GRUDZ',  obj:'GRUDZ_O',     tariff:'C21',  kw:40},
+  '590243892020873028': {prop:'GRUDZ',  obj:'GRUDZ_O',     tariff:'C22A', kw:28},
+  '590243892021169038': {prop:'GRUDZ',  obj:'GRUDZ_R',     tariff:'B23',  kw:230},
+  '590322426301103236': {prop:'WADOW',  obj:'WADOW',       tariff:'C11',  kw:26},
+  '590243824003167503': {prop:'MALBO',  obj:'MALBO',       tariff:'B21',  kw:145},
+};
+
+// ── Group structure (algorithm section 4 & 5) ───────────────────────────
+const GROUPS = [
+  {grp:1, prop:'ZIELON', obj:'ZIELON_O',    ppes:['590310600000218452']},
+  {grp:2, prop:'ZIELON', obj:'ZIELON_CWWI', ppes:['590310600000218469']},
+  {grp:3, prop:'ZIELON', obj:'ZIELON_CWWII',ppes:['590310600000218476']},
+  {grp:4, prop:'ZIELON', obj:'ZIELON_CWWIII',ppes:['590310600000218483']},
+  {grp:5, prop:'GRUDZ',  obj:'GRUDZ_O',     ppes:['590243892020523190','590243892021178726']},
+  {grp:6, prop:'GRUDZ',  obj:'GRUDZ_O',     ppes:['590243892020872335']},
+  {grp:7, prop:'GRUDZ',  obj:'GRUDZ_R',     ppes:['590243892020873028','590243892021169038']},
+  {grp:8, prop:'WADOW',  obj:'WADOW',       ppes:['590322426301103236']},
+  {grp:9, prop:'MALBO',  obj:'MALBO',       ppes:['590243824003167503']},
+];
+
+const PROP_ORDER = ['ZIELON','GRUDZ','WADOW','MALBO'];
+const PROP_LABELS = {ZIELON:'Zielona Góra',GRUDZ:'Grudziądz',WADOW:'Wadowice',MALBO:'Malbork'};
+
+// ── Distributor NIP identification ──────────────────────────────────────
+const DISTR_NIP = {
+  '7822377160': 'ENEA Operator',
+  '5830001190': 'Energa-Operator',
+  '6110202860': 'TAURON Dystrybucja',
+};
+const SELLER_NIP = {'6762337735': 'Tauron Sprzedaż'};
+
+// ── State ───────────────────────────────────────────────────────────────
+let allFiles = [];   // {name, zip}
+let parsedData = {}; // {seller:{ppe:netto}, distr:{ppe:netto}, kwh:{ppe:kwh}}
+
+// ── Drag & drop / file input ─────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover', e=>{e.preventDefault();dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop', e=>{
+  e.preventDefault(); dropzone.classList.remove('drag');
+  addFiles(Array.from(e.dataTransfer.files));
+});
+fileInput.addEventListener('change', ()=>addFiles(Array.from(fileInput.files)));
+
+function addFiles(files) {
+  files.filter(f=>f.name.toLowerCase().endsWith('.zip')).forEach(f=>{
+    if (!allFiles.find(x=>x.name===f.name)) allFiles.push(f);
+  });
+  renderFileList();
+}
+
+function renderFileList() {
+  const el = document.getElementById('fileList');
+  if (!allFiles.length) { el.style.display='none'; return; }
+  el.style.display = 'block';
+  el.innerHTML = allFiles.map(f=>`
+    <div class="file-item"><span class="file-ok">✓</span><span>${f.name}</span></div>
+  `).join('');
+  document.getElementById('btnProcess').style.display = 'inline-block';
+}
+
+function showError(msg) {
+  const el = document.getElementById('errorBox');
+  el.textContent = msg; el.style.display = 'block';
+}
+
+function restart() {
+  allFiles = []; parsedData = {};
+  document.getElementById('panel-upload').style.display = 'block';
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('processing').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('warnBox').style.display = 'none';
+  document.getElementById('fileList').style.display = 'none';
+  document.getElementById('btnProcess').style.display = 'none';
+  document.getElementById('fileList').innerHTML = '';
+  fileInput.value = '';
+}
+window.restart = restart;
+
+// ── XML helpers ──────────────────────────────────────────────────────────
+function getVal(el, localName) {
+  const all = el.getElementsByTagName('*');
+  for (const node of all) {
+    if (node.localName === localName) return node.textContent.trim();
+  }
+  return null;
+}
+
+function extractPPE(text) {
+  const m = text.match(/(\d{18,22})/);
+  return m ? m[1] : null;
+}
+
+// ── Parse all ZIPs ───────────────────────────────────────────────────────
+async function processAll() {
+  document.getElementById('panel-upload').style.display = 'none';
+  document.getElementById('errorBox').style.display = 'none';
+  document.getElementById('processing').style.display = 'block';
+  document.getElementById('processingText').textContent = 'Wczytuję pliki ZIP…';
+
+  try {
+    // seller[ppe] = netto, distr[ppe] = netto, kwh[ppe] = kwh
+    const seller = {}, distr = {}, kwh = {};
+    let period = null;
+    const warnings = [];
+
+    for (const file of allFiles) {
+      const zip = await JSZip.loadAsync(await file.arrayBuffer());
+      const xmlFiles = Object.keys(zip.files).filter(n=>n.toLowerCase().endsWith('.xml'));
+
+      for (const fname of xmlFiles) {
+        const xmlText = await zip.files[fname].async('string');
+        const doc = new DOMParser().parseFromString(xmlText, 'application/xml');
+        if (doc.querySelector('parsererror')) continue;
+
+        // Skip correction invoices
+        const rodzaj = getVal(doc, 'RodzajFaktury');
+        if (rodzaj === 'KOR') continue;
+
+        const nipSeller = getVal(doc, 'NIP');
+        const pf = getVal(doc, 'P_6_Od');
+        const pt = getVal(doc, 'P_6_Do');
+        if (pf && !period) period = {f:pf, t:pt};
+
+        const isSeller = !!SELLER_NIP[nipSeller];
+        const isDistr  = !!DISTR_NIP[nipSeller];
+        if (!isSeller && !isDistr) continue;
+
+        // Aggregate per PPE
+        const rows = doc.getElementsByTagName('*');
+        let currentPPE = null;
+        const ppeNetto = {}, ppeKwh = {};
+
+        for (const node of rows) {
+          if (node.localName !== 'FaWiersz') continue;
+          const p7  = (getVal(node,'P_7') || '').trim();
+          const p8a = (getVal(node,'P_8A') || '').trim();
+          const p8b = parseFloat(getVal(node,'P_8B') || 0);
+          const p11 = parseFloat(getVal(node,'P_11') || 0);
+
+          const ppe = extractPPE(p7);
+          if (!ppe || !PPE_REG[ppe]) continue;
+
+          ppeNetto[ppe] = (ppeNetto[ppe] || 0) + p11;
+
+          // kWh from seller only (authoritative)
+          if (isSeller) {
+            if (p8a === 'kWh' && p8b > 0)  ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b;
+            if (p8a === 'MWh' && p8b > 0)  ppeKwh[ppe] = (ppeKwh[ppe]||0) + p8b*1000;
+          }
+        }
+
+        // Store
+        for (const [ppe, netto] of Object.entries(ppeNetto)) {
+          if (isSeller) seller[ppe] = (seller[ppe]||0) + netto;
+          if (isDistr)  distr[ppe]  = (distr[ppe] ||0) + netto;
+        }
+        for (const [ppe, k] of Object.entries(ppeKwh)) {
+          kwh[ppe] = (kwh[ppe]||0) + k;
+        }
+      }
+    }
+
+    parsedData = {seller, distr, kwh, period, warnings};
+    document.getElementById('processing').style.display = 'none';
+    renderResults();
+
+  } catch(e) {
+    document.getElementById('processing').style.display = 'none';
+    document.getElementById('panel-upload').style.display = 'block';
+    showError('Błąd przetwarzania: ' + e.message);
+    console.error(e);
+  }
+}
+window.processAll = processAll;
+
+// ── Format helpers ───────────────────────────────────────────────────────
+function fmtPLN(v) { return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł'; }
+function fmt8(v)   { return Number(v).toFixed(8).replace('.',','); }
+function fmtKwh(v) { return Number(v).toLocaleString('pl-PL')+' kWh'; }
+
+// ── Copy to clipboard ────────────────────────────────────────────────────
+function copyValue(el, rawVal) {
+  navigator.clipboard.writeText(String(rawVal).replace(',','.')).then(()=>{
+    el.classList.add('copied');
+    const orig = el.innerHTML;
+    el.innerHTML = `✓ skopiowano &nbsp;<span class="copy-hint">Ctrl+V w ERP</span>`;
+    setTimeout(()=>{ el.classList.remove('copied'); el.innerHTML = orig; }, 1600);
+  });
+}
+window.copyValue = copyValue;
+
+// ── Render ───────────────────────────────────────────────────────────────
+function renderResults() {
+  const {seller, distr, kwh, period, warnings} = parsedData;
+
+  // Period badge
+  if (period) {
+    const dt = new Date(period.f);
+    const months = ['styczeń','luty','marzec','kwiecień','maj','czerwiec',
+                    'lipiec','sierpień','wrzesień','październik','listopad','grudzień'];
+    document.getElementById('periodBadge').textContent =
+      `${months[dt.getMonth()]} ${dt.getFullYear()}`;
+  }
+
+  // Warnings
+  if (warnings.length) {
+    const wb = document.getElementById('warnBox');
+    wb.textContent = '⚠ ' + warnings.join(' | ');
+    wb.style.display = 'block';
+  }
+
+  // Tabs
+  const tabsEl = document.getElementById('tabs');
+  tabsEl.innerHTML = '';
+  PROP_ORDER.forEach((prop, i) => {
+    const tab = document.createElement('button');
+    tab.className = 'tab' + (i===0?' active':'');
+    tab.textContent = `${prop} — ${PROP_LABELS[prop]}`;
+    tab.onclick = () => switchTab(prop);
+    tab.dataset.prop = prop;
+    tabsEl.appendChild(tab);
+  });
+
+  // Panels
+  const panelsEl = document.getElementById('propPanels');
+  panelsEl.innerHTML = '';
+  PROP_ORDER.forEach((prop, i) => {
+    const panel = document.createElement('div');
+    panel.className = 'prop-panel' + (i===0?' active':'');
+    panel.dataset.prop = prop;
+    panel.innerHTML = buildPropertyPanel(prop, seller, distr, kwh);
+    panelsEl.appendChild(panel);
+  });
+
+  document.getElementById('results').style.display = 'block';
+}
+
+function switchTab(prop) {
+  document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('active', t.dataset.prop===prop));
+  document.querySelectorAll('.prop-panel').forEach(p=>p.classList.toggle('active', p.dataset.prop===prop));
+}
+window.switchTab = switchTab;
+
+function buildPropertyPanel(prop, seller, distr, kwh) {
+  const propGroups = GROUPS.filter(g=>g.prop===prop);
+  if (!propGroups.length) return `<div class="missing-notice">Brak grup dla nieruchomości ${prop}</div>`;
+
+  // ── Consumption bar ────────────────────────────────────────────────
+  const totalKwh = propGroups.reduce((s,g)=>s+g.ppes.reduce((ss,p)=>ss+(kwh[p]||0),0),0);
+  const kwh_source = prop==='MALBO' ? 'Tauron Sprzedaż BN045114' : 'Tauron Sprzedaż AN290795';
+
+  let html = `
+    <div class="consumption-bar">
+      <div class="cons-item">
+        <span class="cons-label">Łączne zużycie</span>
+        <span class="cons-val">${fmtKwh(totalKwh)}</span>
+        <span class="cons-source">Źródło: ${kwh_source}</span>
+      </div>`;
+
+  // Per-group kWh
+  propGroups.forEach(g => {
+    const gKwh = g.ppes.reduce((s,p)=>s+(kwh[p]||0),0);
+    if (gKwh > 0) {
+      html += `
+      <div class="cons-item">
+        <span class="cons-label">${g.obj} gr.${g.grp}</span>
+        <span class="cons-val" style="font-size:13px">${fmtKwh(gKwh)}</span>
+      </div>`;
+    }
+  });
+  html += `</div>`;
+
+  // ── Seller section ─────────────────────────────────────────────────
+  html += `<div class="section-hdr">Tauron Sprzedaż — zakup energii</div>`;
+  html += `<div class="groups-grid">`;
+  propGroups.forEach(g => {
+    const gSeller = g.ppes.reduce((s,p)=>s+(seller[p]||0),0);
+    if (gSeller === 0) return;
+    const gKwh = g.ppes.reduce((s,p)=>s+(kwh[p]||0),0);
+    const priceS = gKwh > 0 ? gSeller/gKwh : 0;
+    const priceSFmt = fmt8(priceS);
+
+    html += `<div class="grp-card seller">
+      <div class="grp-badge seller">Gr. ${g.grp} · ${g.obj}</div>
+      <div class="grp-ppes">${g.ppes.map(p=>PPE_REG[p]?.tariff||p).join(' + ')}</div>`;
+
+    // Line items
+    g.ppes.forEach(ppe => {
+      const n = seller[ppe]||0;
+      if (n === 0) return;
+      html += `<div class="line-item">
+        <span class="line-ppe">${PPE_REG[ppe]?.tariff} ···${ppe.slice(-6)}</span>
+        <span class="line-netto">${fmtPLN(n)}</span>
+      </div>`;
+    });
+
+    if (g.ppes.length > 1) {
+      html += `<div class="line-sum">
+        <span class="line-sum-lbl">Suma → Saldeo</span>
+        <span class="line-sum-val">${fmtPLN(gSeller)}</span>
+      </div>`;
+    }
+
+    html += `<div class="price-field">
+      <div class="price-label">Cena zakupu (zł/kWh)</div>
+      <div class="price-value seller-price" onclick="copyValue(this,'${priceSFmt}')">${priceSFmt}<span class="copy-hint">kopiuj</span></div>
+      <div class="price-unit">PLN/kWh netto · ${fmtKwh(gKwh)}</div>
+    </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // ── Distributor section ────────────────────────────────────────────
+  const distrName = {ZIELON:'ENEA Operator', GRUDZ:'Energa-Operator', WADOW:'TAURON Dystrybucja', MALBO:'Energa-Operator'}[prop] || 'Dystrybutor';
+  html += `<div class="section-hdr">${distrName} — dystrybucja</div>`;
+  html += `<div class="groups-grid">`;
+  propGroups.forEach(g => {
+    const gDistr = g.ppes.reduce((s,p)=>s+(distr[p]||0),0);
+    if (gDistr === 0) return;
+    const gKwh = g.ppes.reduce((s,p)=>s+(kwh[p]||0),0);
+    const priceD = gKwh > 0 ? gDistr/gKwh : 0;
+    const priceDFmt = fmt8(priceD);
+
+    html += `<div class="grp-card distr">
+      <div class="grp-badge distr">Gr. ${g.grp} · ${g.obj}</div>
+      <div class="grp-ppes">${g.ppes.map(p=>PPE_REG[p]?.tariff||p).join(' + ')}</div>`;
+
+    g.ppes.forEach(ppe => {
+      const n = distr[ppe]||0;
+      if (n === 0) return;
+      html += `<div class="line-item">
+        <span class="line-ppe">${PPE_REG[ppe]?.tariff} ···${ppe.slice(-6)}</span>
+        <span class="line-netto">${fmtPLN(n)}</span>
+      </div>`;
+    });
+
+    if (g.ppes.filter(p=>(distr[p]||0)>0).length > 1) {
+      html += `<div class="line-sum">
+        <span class="line-sum-lbl">Suma → Saldeo</span>
+        <span class="line-sum-val">${fmtPLN(gDistr)}</span>
+      </div>`;
+    }
+
+    html += `<div class="price-field">
+      <div class="price-label">Cena dystrybucji (zł/kWh)</div>
+      <div class="price-value distr-price" onclick="copyValue(this,'${priceDFmt}')">${priceDFmt}<span class="copy-hint">kopiuj</span></div>
+      <div class="price-unit">PLN/kWh netto · ${fmtKwh(gKwh)}</div>
+    </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  // ── Total price section ────────────────────────────────────────────
+  html += `<div class="section-hdr">Cena łączna — Enova</div>`;
+  html += `<div class="groups-grid">`;
+  propGroups.forEach(g => {
+    const gSeller = g.ppes.reduce((s,p)=>s+(seller[p]||0),0);
+    const gDistr  = g.ppes.reduce((s,p)=>s+(distr[p] ||0),0);
+    const gKwh    = g.ppes.reduce((s,p)=>s+(kwh[p]   ||0),0);
+    if (gKwh === 0) return;
+    const total = gSeller + gDistr;
+    const priceT = total / gKwh;
+    const priceTFmt = fmt8(priceT);
+
+    html += `<div class="grp-card total">
+      <div class="grp-badge total">Gr. ${g.grp} · ${g.obj}</div>
+      <div class="grp-ppes">${g.ppes.map(p=>PPE_REG[p]?.tariff||p).join(' + ')}</div>
+      <div class="line-item"><span class="line-ppe">Zakup</span><span class="line-netto">${fmtPLN(gSeller)}</span></div>
+      <div class="line-item"><span class="line-ppe">Dystrybucja</span><span class="line-netto">${fmtPLN(gDistr)}</span></div>
+      <div class="line-sum"><span class="line-sum-lbl">Razem</span><span class="line-sum-val">${fmtPLN(total)}</span></div>
+      <div class="price-field">
+        <div class="price-label">Cena łączna → Enova</div>
+        <div class="price-value total-price" onclick="copyValue(this,'${priceTFmt}')">${priceTFmt}<span class="copy-hint">kopiuj</span></div>
+        <div class="price-unit">PLN/kWh netto · ${fmtKwh(gKwh)}</div>
+      </div>
+    </div>`;
+  });
+  html += `</div>`;
+
+  return html;
+}
+</script>
+</body>
+</html>
