@@ -1,0 +1,740 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fizar — Analiza Dystrybucji</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+:root {
+  --bg:#0f1117; --surface:#181c27; --surface2:#1e2435; --surface3:#232a3d;
+  --border:#2a3148; --border2:#374166;
+  --accent:#3b82f6; --text:#e2e8f0; --muted:#64748b; --muted2:#8899bb;
+  --blue:#60a5fa;  --blue-bg:rgba(96,165,250,.08);
+  --amber:#f59e0b; --amber-bg:rgba(245,158,11,.07);
+  --green:#22c55e; --green-bg:rgba(34,197,94,.08);
+  --teal:#2dd4bf;  --teal-bg:rgba(45,212,191,.07);
+  --red:#f87171;
+  --cat-fixed:rgba(96,165,250,.06);
+  --cat-var:rgba(34,197,94,.06);
+  --cat-cap:rgba(245,158,11,.06);
+  --cat-react:rgba(248,113,113,.06);
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans',sans-serif;font-size:13px;min-height:100vh;}
+
+/* ── Header ── */
+header{background:var(--surface);border-bottom:1px solid var(--border);padding:16px 32px;display:flex;align-items:center;gap:16px;}
+.logo{font-family:'IBM Plex Mono',monospace;font-weight:600;font-size:18px;color:var(--accent);}
+.logo span{color:var(--muted);font-weight:400;}
+.hdr-sub{color:var(--muted);font-size:12px;}
+.hdr-right{margin-left:auto;display:flex;align-items:center;gap:10px;}
+
+main{max-width:1300px;margin:0 auto;padding:36px 24px;}
+h1{font-size:24px;font-weight:500;margin-bottom:5px;}
+h1 em{font-style:normal;color:var(--teal);}
+.subtitle{color:var(--muted);font-size:13px;margin-bottom:32px;}
+
+/* ── Upload ── */
+.upload-zone{border:2px dashed var(--border);border-radius:12px;padding:44px 32px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;background:var(--surface);}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--teal);background:rgba(45,212,191,.04);}
+.upload-zone h2{font-size:17px;font-weight:500;margin-bottom:8px;}
+.upload-zone p{color:var(--muted);font-size:12px;margin-bottom:5px;}
+.upload-zone input{display:none;}
+.btn-upload{display:inline-block;margin-top:16px;padding:9px 22px;background:var(--teal);color:#0f1117;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;border:none;transition:opacity .2s;}
+.btn-upload:hover{opacity:.85;}
+.file-list{margin-top:14px;text-align:left;display:none;}
+.file-item{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--muted);padding:3px 0;display:flex;gap:8px;}
+.file-ok{color:var(--green);}
+.btn-process{display:none;margin-top:18px;padding:11px 30px;background:var(--accent);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s;}
+.btn-process:hover{opacity:.85;}
+.error-box{background:rgba(248,113,113,.1);border:1px solid rgba(248,113,113,.3);border-radius:8px;padding:11px 15px;color:#fca5a5;font-size:12px;margin-top:12px;display:none;}
+
+/* ── Spinner ── */
+#processing{display:none;text-align:center;padding:56px;}
+.spinner{width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--teal);border-radius:50%;animation:spin .8s linear infinite;margin:0 auto 14px;}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ── Results ── */
+#results{display:none;}
+.results-bar{display:flex;align-items:center;gap:12px;margin-bottom:22px;flex-wrap:wrap;}
+.results-title{font-size:19px;font-weight:500;}
+.badge{font-family:'IBM Plex Mono',monospace;font-size:11px;padding:3px 11px;border-radius:12px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);}
+
+/* ── Controls bar ── */
+.controls{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;gap:20px;flex-wrap:wrap;align-items:center;}
+.ctrl-group{display:flex;flex-direction:column;gap:5px;}
+.ctrl-label{font-size:10px;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.08em;text-transform:uppercase;}
+.ctrl-pills{display:flex;gap:5px;flex-wrap:wrap;}
+.pill{padding:5px 13px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;white-space:nowrap;}
+.pill:hover{border-color:var(--teal);color:var(--text);}
+.pill.active{background:rgba(45,212,191,.12);border-color:var(--teal);color:var(--teal);font-weight:600;}
+.pill.month-pill.active{background:rgba(96,165,250,.12);border-color:var(--blue);color:var(--blue);font-weight:600;}
+
+/* ── View toggle ── */
+.view-toggle{display:flex;gap:4px;}
+.vtab{padding:5px 12px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:12px;cursor:pointer;transition:all .15s;}
+.vtab.active{background:var(--surface3);border-color:var(--border2);color:var(--text);}
+
+/* ── Pivot table ── */
+.pivot-wrap{overflow-x:auto;border-radius:10px;border:1px solid var(--border);}
+table.pivot{width:100%;border-collapse:collapse;font-size:12px;}
+table.pivot th{background:var(--surface2);color:var(--muted2);font-weight:600;font-family:'IBM Plex Mono',monospace;font-size:10px;letter-spacing:.06em;text-transform:uppercase;padding:9px 12px;border-bottom:1px solid var(--border);white-space:nowrap;text-align:center;}
+table.pivot th.left{text-align:left;}
+table.pivot td{padding:7px 12px;border-bottom:1px solid rgba(42,49,72,.4);vertical-align:middle;}
+table.pivot tr:last-child td{border-bottom:none;}
+
+/* Category row groups */
+.cat-fixed   td{background:var(--cat-fixed);}
+.cat-variable td{background:var(--cat-var);}
+.cat-capacity td{background:var(--cat-cap);}
+.cat-reactive td{background:var(--cat-react);}
+
+/* Subtotal rows */
+tr.subtotal td{background:var(--surface2) !important;font-weight:600;border-top:1px solid var(--border2);}
+tr.subtotal td.cat-name{color:var(--muted2);font-family:'IBM Plex Mono',monospace;font-size:11px;}
+tr.grand-total td{background:var(--surface3) !important;font-weight:700;border-top:2px solid var(--border2);color:var(--text);}
+
+td.cat-name{font-size:12px;color:var(--text);}
+td.strefa{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);text-align:center;}
+td.unit{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted2);text-align:center;}
+td.num{font-family:'IBM Plex Mono',monospace;text-align:right;color:var(--text);}
+td.num.zero{color:var(--muted);opacity:.4;}
+td.num.highlight{color:var(--teal);}
+td.num.netto{color:var(--amber);}
+
+/* Category badge */
+.cat-badge{display:inline-block;width:8px;height:8px;border-radius:2px;margin-right:7px;vertical-align:middle;}
+
+/* ── Faktury Ilosc table ── */
+.summary-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px;margin-top:4px;}
+.ppe-card{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:16px;}
+.ppe-card-name{font-size:14px;font-weight:600;margin-bottom:3px;}
+.ppe-card-ppe{font-family:'IBM Plex Mono',monospace;font-size:10px;color:var(--muted);margin-bottom:12px;}
+.ppe-month-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid rgba(42,49,72,.5);}
+.ppe-month-row:last-child{border-bottom:none;}
+.ppe-month-lbl{font-size:11px;color:var(--muted);}
+.ppe-month-vals{display:flex;gap:16px;}
+.ppe-val{display:flex;flex-direction:column;align-items:flex-end;gap:1px;}
+.ppe-val-label{font-size:9px;color:var(--muted);font-family:'IBM Plex Mono',monospace;text-transform:uppercase;}
+.ppe-val-num{font-family:'IBM Plex Mono',monospace;font-size:12px;}
+.ppe-val-num.kwh{color:var(--teal);}
+.ppe-val-num.netto{color:var(--amber);}
+.ppe-val-num.price{color:var(--blue);}
+
+/* ── Excel download button ── */
+.btn-excel{padding:8px 18px;background:rgba(34,197,94,.1);color:var(--green);border:1px solid rgba(34,197,94,.25);border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;transition:all .15s;display:flex;align-items:center;gap:7px;}
+.btn-excel:hover{background:rgba(34,197,94,.18);border-color:rgba(34,197,94,.4);}
+.btn-restart{padding:7px 16px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;transition:all .15s;}
+.btn-restart:hover{color:var(--text);border-color:var(--teal);}
+
+/* Section header */
+.sec-hdr{font-size:11px;font-weight:600;color:var(--muted);font-family:'IBM Plex Mono',monospace;letter-spacing:.1em;text-transform:uppercase;margin:24px 0 12px;display:flex;align-items:center;gap:8px;}
+.sec-hdr::after{content:'';flex:1;height:1px;background:var(--border);}
+
+footer{text-align:center;padding:28px;color:var(--muted);font-size:12px;border-top:1px solid var(--border);margin-top:60px;}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">FIZAR<span>.tools</span></div>
+  <div style="width:1px;height:22px;background:var(--border)"></div>
+  <span class="hdr-sub">Analiza Dystrybucji · ENEA Operator + TAURON Dystrybucja</span>
+  <div class="hdr-right" id="hdrRight"></div>
+</header>
+
+<main>
+  <h1>Analiza <em>Dystrybucji</em></h1>
+  <p class="subtitle">Wczytaj pliki ZIP z fakturami KSeF XML od dystrybutorów — ENEA Operator (ZIELON) i TAURON Dystrybucja (WADOW). Przetwarzanie lokalne.</p>
+
+  <div id="panel-upload">
+    <div class="upload-zone" id="dropzone">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="1.5" style="margin:0 auto 12px;display:block">
+        <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/>
+      </svg>
+      <h2>Upuść pliki ZIP z fakturami dystrybucji</h2>
+      <p>ENEA Operator (ZIELON · 4 PPE) · TAURON Dystrybucja (WADOW · 1 PPE)</p>
+      <p style="font-size:11px;color:var(--muted)">Faktury Energa-Operator nie zawierają szczegółów — nie są wymagane dla tej analizy</p>
+      <input type="file" id="fileInput" accept=".zip" multiple>
+      <label for="fileInput" class="btn-upload">Wybierz pliki ZIP</label>
+      <div class="file-list" id="fileList"></div>
+    </div>
+    <div class="error-box" id="errorBox"></div>
+    <button class="btn-process" id="btnProcess" onclick="processAll()">▶ Analizuj faktury</button>
+  </div>
+
+  <div id="processing">
+    <div class="spinner"></div>
+    <p style="color:var(--muted)" id="processingText">Wczytuję pliki…</p>
+  </div>
+
+  <div id="results">
+    <div class="results-bar">
+      <div class="results-title">Wyniki analizy</div>
+      <div id="monthBadges" style="display:flex;gap:6px;flex-wrap:wrap;"></div>
+      <div style="margin-left:auto;display:flex;gap:8px;">
+        <button class="btn-excel" id="btnExcel" onclick="downloadExcel()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+          Pobierz Excel
+        </button>
+        <button class="btn-restart" onclick="restart()">↺ Nowe pliki</button>
+      </div>
+    </div>
+
+    <!-- Controls -->
+    <div class="controls">
+      <div class="ctrl-group">
+        <div class="ctrl-label">Miesiąc</div>
+        <div class="ctrl-pills" id="monthPills"></div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">PPE / Obiekt</div>
+        <div class="ctrl-pills" id="ppePills"></div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Strefa</div>
+        <div class="ctrl-pills" id="strefaPills"></div>
+      </div>
+      <div class="ctrl-group">
+        <div class="ctrl-label">Widok</div>
+        <div class="view-toggle" id="viewToggle">
+          <button class="vtab active" data-view="both" onclick="setView('both')">Ilość + Netto</button>
+          <button class="vtab" data-view="qty" onclick="setView('qty')">Ilość</button>
+          <button class="vtab" data-view="netto" onclick="setView('netto')">Netto</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- View: Details pivot -->
+    <div id="view-details">
+      <div class="sec-hdr">Szczegóły pozycji faktur</div>
+      <div class="pivot-wrap">
+        <table class="pivot" id="pivotTable">
+          <thead id="pivotHead"></thead>
+          <tbody id="pivotBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- View: Faktury Ilosc summary -->
+    <div id="view-summary">
+      <div class="sec-hdr">Faktury — zużycie i cena dystrybucji</div>
+      <div class="summary-grid" id="summaryGrid"></div>
+    </div>
+
+    <!-- Reactive energy section -->
+    <div id="view-reactive">
+      <div class="sec-hdr">Energia bierna</div>
+      <div class="pivot-wrap">
+        <table class="pivot" id="reactTable">
+          <thead id="reactHead"></thead>
+          <tbody id="reactBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</main>
+<footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
+
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script>
+// ── PPE register (ENEA + TAURON only) ───────────────────────────────────
+const PPE_REG = {
+  '590310600000218452': {prop:'ZIELON',obj:'ZIELON_O',  bld:'CWW_biuro',tariff:'C22B',distr:'ENEA Operator'},
+  '590310600000218469': {prop:'ZIELON',obj:'ZIELON_CWWI', bld:'CWW_1',  tariff:'C22B',distr:'ENEA Operator'},
+  '590310600000218476': {prop:'ZIELON',obj:'ZIELON_CWWII',bld:'CWW_2',  tariff:'C22B',distr:'ENEA Operator'},
+  '590310600000218483': {prop:'ZIELON',obj:'ZIELON_CWWIII',bld:'CWW_3', tariff:'C22B',distr:'ENEA Operator'},
+  '590322426301103236': {prop:'WADOW', obj:'WADOW',     bld:'CH_Filar', tariff:'C11', distr:'TAURON Dystrybucja'},
+};
+const DISTR_NIP = {'7822377160':'ENEA Operator','6110202860':'TAURON Dystrybucja'};
+
+const PPE_ORDER = Object.keys(PPE_REG);
+const MONTHS_ORDER = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec',
+                      'Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+
+// Category classification
+const CAT_CONFIG = [
+  {key:'Opłata stała sieciowa',     group:'fixed',    color:'#60a5fa',label:'Stała sieciowa'},
+  {key:'Składnik stały sieciowy',   group:'fixed',    color:'#60a5fa',label:'Składnik stały'},
+  {key:'Opłata abonamentowa',       group:'fixed',    color:'#818cf8',label:'Abonamentowa'},
+  {key:'Opłata przejściowa',        group:'fixed',    color:'#94a3b8',label:'Przejściowa'},
+  {key:'Opłata zmienna sieciowa',   group:'variable', color:'#22c55e',label:'Zmienna sieciowa ✓'},
+  {key:'Składnik zmienny sieciowy', group:'variable', color:'#22c55e',label:'Składnik zmienny ✓'},
+  {key:'Opłata jakościowa',         group:'variable', color:'#4ade80',label:'Jakościowa'},
+  {key:'Opłata OZE',                group:'variable', color:'#86efac',label:'OZE'},
+  {key:'Opłata kogeneracyjna',      group:'variable', color:'#bbf7d0',label:'Kogeneracyjna'},
+  {key:'Opłata mocowa',             group:'capacity', color:'#f59e0b',label:'Mocowa'},
+  {key:'En. bierna pojemnościowa',  group:'reactive', color:'#f87171',label:'Bierna pojemn.'},
+  {key:'En. bierna indukcyjna',     group:'reactive', color:'#fca5a5',label:'Bierna indukc.'},
+  {key:'En. bierna (inne)',         group:'reactive', color:'#fed7d7',label:'Bierna (inne)'},
+];
+const CAT_MAP = Object.fromEntries(CAT_CONFIG.map(c=>[c.key,c]));
+const GROUP_CLASS = {fixed:'cat-fixed',variable:'cat-variable',capacity:'cat-capacity',reactive:'cat-reactive'};
+
+// ── State ────────────────────────────────────────────────────────────────
+let allFiles = [];
+let parsedRows = [];   // flat array of all extracted rows
+let state = {month:null, ppe:'all', strefa:'all', view:'both'};
+
+// ── Drag & drop ──────────────────────────────────────────────────────────
+const dropzone = document.getElementById('dropzone');
+const fileInput = document.getElementById('fileInput');
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop',e=>{e.preventDefault();dropzone.classList.remove('drag');addFiles(Array.from(e.dataTransfer.files));});
+fileInput.addEventListener('change',()=>addFiles(Array.from(fileInput.files)));
+
+function addFiles(files){
+  files.filter(f=>f.name.toLowerCase().endsWith('.zip')).forEach(f=>{
+    if(!allFiles.find(x=>x.name===f.name)) allFiles.push(f);
+  });
+  renderFileList();
+}
+function renderFileList(){
+  const el=document.getElementById('fileList');
+  if(!allFiles.length){el.style.display='none';return;}
+  el.style.display='block';
+  el.innerHTML=allFiles.map(f=>`<div class="file-item"><span class="file-ok">✓</span><span>${f.name}</span></div>`).join('');
+  document.getElementById('btnProcess').style.display='inline-block';
+}
+function showError(msg){const el=document.getElementById('errorBox');el.textContent=msg;el.style.display='block';}
+function restart(){
+  allFiles=[];parsedRows=[];
+  document.getElementById('panel-upload').style.display='block';
+  document.getElementById('results').style.display='none';
+  document.getElementById('processing').style.display='none';
+  document.getElementById('errorBox').style.display='none';
+  document.getElementById('fileList').style.display='none';
+  document.getElementById('btnProcess').style.display='none';
+  document.getElementById('fileList').innerHTML='';
+  fileInput.value='';
+}
+window.restart=restart;
+
+// ── XML helpers ──────────────────────────────────────────────────────────
+function getVal(el,name){
+  const nodes=el.getElementsByTagName('*');
+  for(const n of nodes) if(n.localName===name) return n.textContent.trim();
+  return null;
+}
+function extractPPE(text){const m=text.match(/(\d{18,22})/);return m?m[1]:null;}
+
+function categorize(desc){
+  const d=desc.toLowerCase();
+  let cat,strefa;
+  if(d.includes('zmienna')&&d.includes('sieciow'))          cat='Opłata zmienna sieciowa';
+  else if(d.includes('stała')&&d.includes('sieciow'))       cat='Opłata stała sieciowa';
+  else if(d.includes('składnik zmienny'))                    cat='Składnik zmienny sieciowy';
+  else if(d.includes('składnik stały'))                      cat='Składnik stały sieciowy';
+  else if(d.includes('abonament'))                           cat='Opłata abonamentowa';
+  else if(d.includes('jakościow'))                           cat='Opłata jakościowa';
+  else if(d.includes('oze'))                                 cat='Opłata OZE';
+  else if(d.includes('kogenerac'))                           cat='Opłata kogeneracyjna';
+  else if(d.includes('mocow')&&!d.includes('ponad'))         cat='Opłata mocowa';
+  else if(d.includes('przejściow'))                          cat='Opłata przejściowa';
+  else if(d.includes('pojemnościow'))                        cat='En. bierna pojemnościowa';
+  else if(d.includes('indukcyjn'))                           cat='En. bierna indukcyjna';
+  else if(d.includes('biernej'))                             cat='En. bierna (inne)';
+  else cat=desc.slice(0,40);
+
+  if(d.includes('dzienn')||/\d{4}-\d{2}-\d{2}/.test(desc)) strefa='dzienna';
+  else if(d.includes('nocn'))                                strefa='nocna';
+  else if(d.includes('całodob'))                             strefa='całodobowa';
+  else                                                       strefa='—';
+  return {cat,strefa};
+}
+
+function monthLabel(pf){
+  if(!pf) return null;
+  const mo=pf.slice(5,7), yr=pf.slice(0,4);
+  const name=MONTHS_ORDER[parseInt(mo)-1];
+  return name?`${name} ${yr}`:pf;
+}
+
+// ── Parse ────────────────────────────────────────────────────────────────
+async function processAll(){
+  document.getElementById('panel-upload').style.display='none';
+  document.getElementById('processing').style.display='block';
+  try{
+    const rows=[];
+    for(const file of allFiles){
+      const zip=await JSZip.loadAsync(await file.arrayBuffer());
+      const xmlFiles=Object.keys(zip.files).filter(n=>n.toLowerCase().endsWith('.xml'));
+      for(const fname of xmlFiles){
+        const xmlText=await zip.files[fname].async('string');
+        const doc=new DOMParser().parseFromString(xmlText,'application/xml');
+        if(doc.querySelector('parsererror')) continue;
+        if(getVal(doc,'RodzajFaktury')==='KOR') continue;
+        const nip=getVal(doc,'NIP');
+        if(!DISTR_NIP[nip]) continue;
+        const distr=DISTR_NIP[nip];
+        const inv=getVal(doc,'P_2');
+        const pf=getVal(doc,'P_6_Od');
+        const month=monthLabel(pf);
+        if(!month) continue;
+        for(const node of doc.getElementsByTagName('*')){
+          if(node.localName!=='FaWiersz') continue;
+          const p7=(getVal(node,'P_7')||'').trim();
+          const p8a=(getVal(node,'P_8A')||'').trim();
+          const p8b=parseFloat(getVal(node,'P_8B')||0);
+          const p9a=parseFloat(getVal(node,'P_9A')||0);
+          const p11=parseFloat(getVal(node,'P_11')||0);
+          const ppe=extractPPE(p7);
+          if(!ppe||!PPE_REG[ppe]) continue;
+          const {cat,strefa}=categorize(p7);
+          const reg=PPE_REG[ppe];
+          rows.push({month,distr,prop:reg.prop,obj:reg.obj,bld:reg.bld,
+                     ppe,tariff:reg.tariff,cat,strefa,unit:p8a,
+                     qty:p8b,price:p9a,netto:p11,inv});
+        }
+      }
+    }
+    parsedRows=rows;
+    document.getElementById('processing').style.display='none';
+    renderResults();
+  }catch(e){
+    document.getElementById('processing').style.display='none';
+    document.getElementById('panel-upload').style.display='block';
+    showError('Błąd: '+e.message);
+  }
+}
+window.processAll=processAll;
+
+// ── Render results ────────────────────────────────────────────────────────
+function renderResults(){
+  // Detect months and set initial state
+  const months=[...new Set(parsedRows.map(r=>r.month))].sort((a,b)=>{
+    const ai=MONTHS_ORDER.findIndex(m=>a.startsWith(m));
+    const bi=MONTHS_ORDER.findIndex(m=>b.startsWith(m));
+    return ai-bi;
+  });
+  state.month=months[0];
+
+  // Month pills
+  const mp=document.getElementById('monthPills');
+  mp.innerHTML=months.map(m=>`
+    <button class="pill month-pill${m===state.month?' active':''}"
+            onclick="setMonth('${m}')">${m}</button>`).join('');
+
+  // PPE pills
+  const ppes=[...new Set(parsedRows.map(r=>r.ppe))].filter(p=>PPE_REG[p]);
+  const pp=document.getElementById('ppePills');
+  pp.innerHTML=`<button class="pill active" onclick="setPPE('all')">Wszystkie</button>`+
+    ppes.map(p=>`<button class="pill" onclick="setPPE('${p}')">${PPE_REG[p].bld}</button>`).join('');
+
+  // Strefa pills
+  const sp=document.getElementById('strefaPills');
+  sp.innerHTML=`
+    <button class="pill active" onclick="setStrefa('all')">Wszystkie</button>
+    <button class="pill" onclick="setStrefa('dzienna')">dzienna</button>
+    <button class="pill" onclick="setStrefa('nocna')">nocna</button>
+    <button class="pill" onclick="setStrefa('całodobowa')">całodobowa</button>`;
+
+  document.getElementById('results').style.display='block';
+  renderAll();
+}
+
+function setMonth(m){
+  state.month=m;
+  document.querySelectorAll('.month-pill').forEach(b=>b.classList.toggle('active',b.textContent===m));
+  renderAll();
+}
+function setPPE(p){
+  state.ppe=p;
+  document.querySelectorAll('#ppePills .pill').forEach(b=>{
+    const bppe=b.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+    b.classList.toggle('active',bppe===p);
+  });
+  renderAll();
+}
+function setStrefa(s){
+  state.strefa=s;
+  document.querySelectorAll('#strefaPills .pill').forEach(b=>{
+    const bs=b.getAttribute('onclick').match(/'([^']+)'/)?.[1];
+    b.classList.toggle('active',bs===s);
+  });
+  renderAll();
+}
+function setView(v){
+  state.view=v;
+  document.querySelectorAll('.vtab').forEach(b=>b.classList.toggle('active',b.dataset.view===v));
+  renderAll();
+}
+window.setMonth=setMonth; window.setPPE=setPPE;
+window.setStrefa=setStrefa; window.setView=setView;
+
+function filtered(){
+  return parsedRows.filter(r=>{
+    if(r.month!==state.month) return false;
+    if(state.ppe!=='all'&&r.ppe!==state.ppe) return false;
+    if(state.strefa!=='all'&&r.strefa!==state.strefa) return false;
+    return true;
+  });
+}
+
+// ── Format helpers ────────────────────────────────────────────────────────
+function fmtQty(v,unit){
+  if(v===0||v===null||v===undefined) return '<span style="opacity:.3">—</span>';
+  const n=Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2});
+  return `${n}`;
+}
+function fmtPLN(v){
+  if(v===0||v===null) return '<span style="opacity:.3">—</span>';
+  return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł';
+}
+function fmtPrice(v){
+  if(!v||v===0) return '<span style="opacity:.3">—</span>';
+  return Number(v).toFixed(6).replace('.',',');
+}
+
+function renderAll(){
+  renderPivot();
+  renderSummary();
+  renderReactive();
+}
+
+// ── Pivot table ──────────────────────────────────────────────────────────
+function renderPivot(){
+  const rows=filtered().filter(r=>!r.cat.startsWith('En. bierna'));
+  const showQty  = state.view!=='netto';
+  const showNetto= state.view!=='qty';
+
+  // Build pivot: cat → strefa → {qty, netto, unit}
+  const pivot={};
+  for(const r of rows){
+    if(!pivot[r.cat]) pivot[r.cat]={};
+    if(!pivot[r.cat][r.strefa]) pivot[r.cat][r.strefa]={qty:0,netto:0,unit:r.unit};
+    pivot[r.cat][r.strefa].qty  +=r.qty;
+    pivot[r.cat][r.strefa].netto+=r.netto;
+  }
+
+  // Head
+  let colCount = 2; // cat + strefa
+  if(showQty)   colCount++;
+  if(showNetto) colCount++;
+  colCount++; // unit always
+
+  let thead=`<tr>
+    <th class="left" style="width:220px">Kategoria</th>
+    <th>Strefa</th>
+    <th>Jedn.</th>`;
+  if(showQty)   thead+=`<th>Ilość</th>`;
+  if(showNetto) thead+=`<th>Netto (zł)</th>`;
+  thead+=`</tr>`;
+  document.getElementById('pivotHead').innerHTML=thead;
+
+  // Body
+  let tbody='';
+  let grandQty=0, grandNetto=0;
+
+  const catsPresent=CAT_CONFIG.filter(c=>pivot[c.key] && !c.key.startsWith('En. bierna'));
+
+  for(const cfg of catsPresent){
+    const cat=cfg.key;
+    const strefas=Object.keys(pivot[cat]).sort();
+    const grpClass=GROUP_CLASS[cfg.group]||'';
+    const isMulti=strefas.length>1;
+    let catQty=0, catNetto=0;
+
+    for(let si=0;si<strefas.length;si++){
+      const s=strefas[si];
+      const d=pivot[cat][s];
+      catQty+=d.qty; catNetto+=d.netto;
+      grandQty+=d.qty; grandNetto+=d.netto;
+
+      tbody+=`<tr class="${grpClass}">`;
+      if(si===0){
+        const badge=`<span class="cat-badge" style="background:${cfg.color}"></span>`;
+        tbody+=`<td class="cat-name" rowspan="${strefas.length}">${badge}${cfg.label}</td>`;
+      }
+      tbody+=`<td class="strefa">${s!=='—'?s:''}</td>`;
+      tbody+=`<td class="unit">${d.unit}</td>`;
+      if(showQty)   tbody+=`<td class="num ${d.qty===0?'zero':''}">${fmtQty(d.qty,d.unit)}</td>`;
+      if(showNetto) tbody+=`<td class="num netto ${d.netto===0?'zero':''}">${fmtPLN(d.netto)}</td>`;
+      tbody+=`</tr>`;
+    }
+
+    // Subtotal for multi-strefa cats
+    if(isMulti){
+      tbody+=`<tr class="subtotal">
+        <td class="cat-name" colspan="2" style="text-align:right;padding-right:12px;font-size:11px;color:var(--muted2)">Razem</td>
+        <td class="unit"></td>`;
+      if(showQty)   tbody+=`<td class="num">${fmtQty(catQty,'')}</td>`;
+      if(showNetto) tbody+=`<td class="num netto">${fmtPLN(catNetto)}</td>`;
+      tbody+=`</tr>`;
+    }
+  }
+
+  // Grand total
+  tbody+=`<tr class="grand-total">
+    <td class="cat-name" colspan="3" style="font-family:'IBM Plex Mono',monospace;font-size:11px;letter-spacing:.05em">RAZEM FAKTURA</td>`;
+  if(showQty)   tbody+=`<td class="num">${fmtQty(grandQty,'')}</td>`;
+  if(showNetto) tbody+=`<td class="num netto">${fmtPLN(grandNetto)}</td>`;
+  tbody+=`</tr>`;
+
+  document.getElementById('pivotBody').innerHTML=tbody;
+}
+
+// ── Summary (Faktury Ilosc) ──────────────────────────────────────────────
+function renderSummary(){
+  const CONS_CATS=['Opłata zmienna sieciowa','Składnik zmienny sieciowy'];
+  const months=[...new Set(parsedRows.map(r=>r.month))].sort((a,b)=>{
+    return MONTHS_ORDER.findIndex(m=>a.startsWith(m))-MONTHS_ORDER.findIndex(m=>b.startsWith(m));
+  });
+
+  const ppes=PPE_ORDER.filter(p=>{
+    if(state.ppe!=='all'&&state.ppe!==p) return false;
+    return parsedRows.some(r=>r.ppe===p);
+  });
+
+  let html='';
+  for(const ppe of ppes){
+    const reg=PPE_REG[ppe];
+    html+=`<div class="ppe-card">
+      <div class="ppe-card-name">${reg.bld}</div>
+      <div class="ppe-card-ppe">${ppe} · ${reg.tariff} · ${reg.distr}</div>`;
+
+    for(const m of months){
+      const mRows=parsedRows.filter(r=>r.ppe===ppe&&r.month===m);
+      const kwh=mRows.filter(r=>CONS_CATS.includes(r.cat)).reduce((s,r)=>s+r.qty,0);
+      const netto=mRows.reduce((s,r)=>s+r.netto,0);
+      const price=kwh>0?netto/kwh:null;
+
+      html+=`<div class="ppe-month-row">
+        <span class="ppe-month-lbl">${m}</span>
+        <div class="ppe-month-vals">
+          <div class="ppe-val">
+            <span class="ppe-val-label">kWh</span>
+            <span class="ppe-val-num kwh">${kwh>0?Number(kwh).toLocaleString('pl-PL',{maximumFractionDigits:0}):'—'}</span>
+          </div>
+          <div class="ppe-val">
+            <span class="ppe-val-label">Netto</span>
+            <span class="ppe-val-num netto">${netto>0?Number(netto).toLocaleString('pl-PL',{minimumFractionDigits:2,maximumFractionDigits:2})+' zł':'—'}</span>
+          </div>
+          <div class="ppe-val">
+            <span class="ppe-val-label">Cena dystr.</span>
+            <span class="ppe-val-num price">${price?Number(price).toFixed(6).replace('.',','):'—'}</span>
+          </div>
+        </div>
+      </div>`;
+    }
+    html+='</div>';
+  }
+  document.getElementById('summaryGrid').innerHTML=html;
+}
+
+// ── Reactive energy ──────────────────────────────────────────────────────
+function renderReactive(){
+  const reactCats=['En. bierna pojemnościowa','En. bierna indukcyjna'];
+  const rows=filtered().filter(r=>reactCats.includes(r.cat));
+
+  if(rows.length===0){
+    document.getElementById('view-reactive').style.display='none';
+    return;
+  }
+  document.getElementById('view-reactive').style.display='block';
+
+  const showQty  = state.view!=='netto';
+  const showNetto= state.view!=='qty';
+
+  let thead=`<tr>
+    <th class="left">Obiekt</th><th class="left">Kategoria</th>
+    <th>Strefa</th><th>Jedn.</th>`;
+  if(showQty)   thead+=`<th>Ilość</th>`;
+  if(showNetto) thead+=`<th>Netto (zł)</th>`;
+  thead+=`</tr>`;
+  document.getElementById('reactHead').innerHTML=thead;
+
+  // pivot: ppe → cat → strefa
+  const pivot={};
+  for(const r of rows){
+    if(!pivot[r.ppe]) pivot[r.ppe]={};
+    if(!pivot[r.ppe][r.cat]) pivot[r.ppe][r.cat]={};
+    if(!pivot[r.ppe][r.cat][r.strefa]) pivot[r.ppe][r.cat][r.strefa]={qty:0,netto:0,unit:r.unit};
+    pivot[r.ppe][r.cat][r.strefa].qty  +=r.qty;
+    pivot[r.ppe][r.cat][r.strefa].netto+=r.netto;
+  }
+
+  let tbody='';
+  for(const ppe of PPE_ORDER){
+    if(!pivot[ppe]) continue;
+    const reg=PPE_REG[ppe];
+    for(const cat of reactCats){
+      if(!pivot[ppe][cat]) continue;
+      const strefas=Object.keys(pivot[ppe][cat]).sort();
+      const cfg=CAT_MAP[cat];
+      const grpClass=GROUP_CLASS[cfg?.group||'reactive'];
+      for(let si=0;si<strefas.length;si++){
+        const s=strefas[si];
+        const d=pivot[ppe][cat][s];
+        tbody+=`<tr class="${grpClass}">`;
+        if(si===0) tbody+=`<td class="cat-name" rowspan="${strefas.length}" style="font-weight:600">${reg.bld}</td>`;
+        if(si===0) tbody+=`<td class="cat-name" rowspan="${strefas.length}">
+          <span class="cat-badge" style="background:${cfg?.color||'#f87171'}"></span>${cfg?.label||cat}</td>`;
+        tbody+=`<td class="strefa">${s!=='—'?s:''}</td>`;
+        tbody+=`<td class="unit">${d.unit}</td>`;
+        if(showQty)   tbody+=`<td class="num ${d.qty===0?'zero':''}">${fmtQty(d.qty,'')}</td>`;
+        if(showNetto) tbody+=`<td class="num netto ${d.netto===0?'zero':''}">${fmtPLN(d.netto)}</td>`;
+        tbody+=`</tr>`;
+      }
+    }
+  }
+  document.getElementById('reactBody').innerHTML=tbody;
+}
+
+// ── Excel export (SheetJS) ───────────────────────────────────────────────
+function downloadExcel(){
+  const wb=XLSX.utils.book_new();
+
+  // Sheet 1: Raw data
+  const rawHeaders=['Miesiąc','Dystrybutor','Prop.','Obiekt','Budynek','PPE',
+                    'Taryfa','Kategoria','Strefa','Jedn.','Ilość','Cena jedn.','Netto (zł)','Faktura'];
+  const rawData=[rawHeaders,...parsedRows.map(r=>[
+    r.month,r.distr,r.prop,r.obj,r.bld,r.ppe,r.tariff,r.cat,r.strefa,
+    r.unit,r.qty,r.price,r.netto,r.inv])];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(rawData),'Raw Data');
+
+  // Sheet 2: Faktury Ilosc
+  const CONS_CATS=['Opłata zmienna sieciowa','Składnik zmienny sieciowy'];
+  const months=[...new Set(parsedRows.map(r=>r.month))].sort((a,b)=>
+    MONTHS_ORDER.findIndex(m=>a.startsWith(m))-MONTHS_ORDER.findIndex(m=>b.startsWith(m)));
+  const fiRows=[['Budynek','PPE','Taryfa'].concat(months.flatMap(m=>[`${m} kWh`,`${m} Netto`,`${m} Cena`]))];
+  for(const ppe of PPE_ORDER){
+    const reg=PPE_REG[ppe];
+    const row=[reg.bld,ppe,reg.tariff];
+    for(const m of months){
+      const mRows=parsedRows.filter(r=>r.ppe===ppe&&r.month===m);
+      const kwh=mRows.filter(r=>CONS_CATS.includes(r.cat)).reduce((s,r)=>s+r.qty,0);
+      const netto=mRows.reduce((s,r)=>s+r.netto,0);
+      row.push(kwh||null,netto||null,kwh>0?netto/kwh:null);
+    }
+    fiRows.push(row);
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(fiRows),'Faktury Ilosc');
+
+  // Sheet 3: Details by PPE and month
+  const detailRows=[['PPE','Budynek','Miesiąc','Kategoria','Strefa','Jedn.','Ilość','Netto (zł)']];
+  for(const ppe of PPE_ORDER){
+    const reg=PPE_REG[ppe];
+    for(const m of months){
+      const grouped={};
+      for(const r of parsedRows.filter(r=>r.ppe===ppe&&r.month===m)){
+        const k=`${r.cat}||${r.strefa}`;
+        if(!grouped[k]) grouped[k]={cat:r.cat,strefa:r.strefa,unit:r.unit,qty:0,netto:0};
+        grouped[k].qty+=r.qty; grouped[k].netto+=r.netto;
+      }
+      for(const d of Object.values(grouped)){
+        detailRows.push([ppe,reg.bld,m,d.cat,d.strefa,d.unit,d.qty,d.netto]);
+      }
+    }
+  }
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(detailRows),'Details');
+
+  const period=state.month?state.month.replace(' ','_'):'2026';
+  XLSX.writeFile(wb,`Fizar_Dystrybucja_${period}.xlsx`);
+}
+window.downloadExcel=downloadExcel;
+</script>
+</body>
+</html>
