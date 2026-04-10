@@ -173,17 +173,29 @@
       </div>
     </div>
 
-    <a class="tool-card" href="prad/" style="border-color:rgba(96,165,250,.35)">
-      <div class="tool-icon" style="background:rgba(96,165,250,.15)">⚡</div>
-      <div class="tool-info">
-        <div class="tool-name">Kalkulator Prądu</div>
-        <div class="tool-desc">
-          Wczytaj faktury ZIP z KSeF XML — Tauron Sprzedaż + dystrybutorzy (ENEA / Energa / TAURON Dystr.).
-          Wyniki: zużycie, kwoty do Saldeo, ceny do Enova dla wszystkich nieruchomości.
-        </div>
+    <div class="tool-card" style="border-color:rgba(96,165,250,.20);cursor:default;transform:none !important;gap:0;padding:0;overflow:hidden;">
+      <div style="display:flex;flex:1;min-width:0;">
+
+        <a href="prad/" style="flex:1;display:flex;align-items:center;gap:20px;padding:24px;text-decoration:none;color:var(--text);border-right:1px solid rgba(96,165,250,.15);transition:background .2s;" onmouseover="this.style.background='rgba(96,165,250,.06)'" onmouseout="this.style.background='transparent'">
+          <div class="tool-icon" style="background:rgba(96,165,250,.15);flex-shrink:0">⚡</div>
+          <div class="tool-info">
+            <div class="tool-name" style="font-size:15px;">Kalkulator Prądu</div>
+            <div class="tool-desc">Tauron Sprzedaż + ENEA / Energa / TAURON Dystr. · kwoty do Saldeo i ceny do Enova</div>
+          </div>
+          <div class="tool-tag" style="background:rgba(96,165,250,.12);color:#60a5fa;flex-shrink:0">PRĄD · ENOVA</div>
+        </a>
+
+        <a href="dystr/" style="flex:1;display:flex;align-items:center;gap:20px;padding:24px;text-decoration:none;color:var(--text);transition:background .2s;" onmouseover="this.style.background='rgba(45,212,191,.06)'" onmouseout="this.style.background='transparent'">
+          <div class="tool-icon" style="background:rgba(45,212,191,.12);flex-shrink:0">📊</div>
+          <div class="tool-info">
+            <div class="tool-name" style="font-size:15px;">Analiza Dystrybucji</div>
+            <div class="tool-desc">ENEA Operator + TAURON Dystr. · pivot techniczny: pozycje, strefy, energia bierna</div>
+          </div>
+          <div class="tool-tag" style="background:rgba(45,212,191,.10);color:#2dd4bf;flex-shrink:0">DYSTR · PIVOT</div>
+        </a>
+
       </div>
-      <div class="tool-tag" style="background:rgba(96,165,250,.12);color:#60a5fa">PRĄD · ENOVA</div>
-    </a>
+    </div>
 
     <a class="tool-card" href="help/" style="border-color:rgba(99,102,241,.35)">
       <div class="tool-icon" style="background:rgba(99,102,241,.15)">📖</div>
