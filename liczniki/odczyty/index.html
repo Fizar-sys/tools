@@ -1201,37 +1201,66 @@ function processQRData(raw) {
       throw new Error('Nieprawidłowy format QR');
     }
 
-    // Auto-select property from QR payload (data.p = GRUDZ / MALBO / ZIELON)
+    // Auto-select property from QR payload
     const prop = data.p;
     if (prop && METERS_DATA[prop]) {
       selectProperty(prop);
     }
 
-    // Filter METERS to only the utility type carried in this QR
-    // data.t: "Cieplo" → u:"C" | "Prad" → u:"P" | "Woda" → u:"W"
-    const utilMap = { Cieplo:'C', Prad:'P', Woda:'W' };
-    const uCode = utilMap[data.t];
-    if (uCode && METERS_DATA[prop]) {
-      METERS = METERS_DATA[prop].filter(m => m.u === uCode);
+    // ── Build METERS exclusively from QR payload v{} keys ────────────────
+    // QR payload = session definition. Only meters present in v{} are shown.
+    // METERS_DATA used only as metadata lookup (name, unit, bld, fl, pr).
+    // If a key is not in METERS_DATA, a minimal fallback entry is created.
+
+    const allMetersForProp = METERS_DATA[prop] || [];
+
+    // Build lookup: compressed key → full meter object
+    // e.g. "P_CWWI-0-H0001B" → meter object with id "LICZ_P_ZIELON_CWWI-0-H0001B"
+    const keyToMeter = {};
+    for (const m of allMetersForProp) {
+      const parts = m.id.split('_');
+      const u    = parts[1];
+      const rest = parts.slice(3).join('_');
+      keyToMeter[u + '_' + rest] = m;
     }
 
+    // Build METERS and prevReadings from QR payload keys — preserving QR order
+    METERS = [];
+    prevReadings = {};
+
+    for (const key of Object.keys(data.v)) {
+      const meter = keyToMeter[key];
+      let resolvedMeter;
+      if (meter) {
+        resolvedMeter = meter;
+      } else {
+        // Unknown key — create minimal fallback
+        const uCode = key.split('_')[0];
+        const rest  = key.slice(uCode.length + 1);
+        resolvedMeter = {
+          id:   `LICZ_${uCode}_${prop}_${rest}`,
+          name: key,
+          unit: uCode === 'W' ? 'm³' : uCode === 'C' ? 'GJ' : 'kWh',
+          u:    uCode,
+          bld: null, fl: null, pr: null,
+        };
+        console.warn('[processQRData] Unknown key in QR payload:', key);
+      }
+      METERS.push(resolvedMeter);
+      if (data.v[key] !== undefined && data.v[key] !== null) {
+        prevReadings[resolvedMeter.id] = data.v[key];
+      }
+    }
+    // ── End: METERS built from QR payload ─────────────────────────────────
+
+    // Parse refDate
     const rd = data.d || '';
     if (rd.includes('.')) {
       const p = rd.split('.');
-      refDate = p.length === 3 ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}` : rd;
+      refDate = p.length === 3
+        ? `${p[2]}-${p[1].padStart(2,'0')}-${p[0].padStart(2,'0')}`
+        : rd;
     } else { refDate = rd; }
-
-    prevReadings = {};
-    METERS.forEach(m => {
-      // Compress full ID to key: LICZ_C_ZIELON_CWWII-0-H0001 → C_CWWII-0-H0001
-      const parts = m.id.split('_');           // ["LICZ","C","ZIELON","CWWII-0-H0001"]
-      const u    = parts[1];                   // "C"
-      const rest = parts.slice(3).join('_');   // "CWWII-0-H0001"
-      const key  = u + '_' + rest;             // "C_CWWII-0-H0001"
-      if (data.v[key] !== undefined && data.v[key] !== null) {
-        prevReadings[m.id] = data.v[key];
-      }
-    });
 
     const count = Object.keys(prevReadings).length;
     document.getElementById('refDateBadge').textContent = data.d;
@@ -1240,11 +1269,18 @@ function processQRData(raw) {
 
     const btn = document.getElementById('btnScanQR');
     btn.classList.add('success');
-    const utilLabel = { C:'Ciepło', P:'Prąd', W:'Woda' }[uCode] || data.t;
+
+    // Session label: data.g (new format: "CWW1+3") or data.t (old: "Prad" → "Prąd")
+    const utilLabels = { C:'Ciepło', P:'Prąd', W:'Woda', G:'Gaz' };
+    const oldUtil = { Cieplo:'C', Prad:'P', Woda:'W' };
+    const sessionLabel = data.g
+      ? data.g
+      : (utilLabels[oldUtil[data.t]] || data.t || '');
+
     btn.innerHTML = `<span style="font-size:24px">✅</span>
       <div>
         <div style="font-weight:600;font-size:15px">QR zeskanowany pomyślnie</div>
-        <div style="font-size:12px;opacity:.7">${utilLabel} — ${count} liczników z dnia ${data.d}</div>
+        <div style="font-size:12px;opacity:.7">${sessionLabel} — ${count} liczników z dnia ${data.d}</div>
       </div>`;
 
     checkCanStart();
