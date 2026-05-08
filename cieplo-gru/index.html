@@ -59,6 +59,7 @@
   .btn-restart:hover{color:var(--text);border-color:var(--amber);}
   .error-box{background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.3);border-radius:8px;padding:14px 18px;color:#fca5a5;font-size:13px;margin-top:16px;display:none;}
   .warn-box{background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.25);border-radius:8px;padding:12px 16px;color:var(--amber);font-size:12px;margin-bottom:16px;display:none;}
+  /* DEBUG CSS — uncomment with debug panel
   #debug{display:none;margin-top:24px;}
   .debug-toggle{padding:7px 16px;background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:6px;font-size:12px;cursor:pointer;font-family:'IBM Plex Mono',monospace;margin-bottom:12px;}
   .debug-toggle:hover{color:var(--text);border-color:var(--accent);}
@@ -80,6 +81,7 @@
   .verify-row:last-child{border-bottom:none;}
   .verify-ok{color:#22c55e;font-family:'IBM Plex Mono',monospace;font-size:11px;}
   .verify-fail{color:#ef4444;font-family:'IBM Plex Mono',monospace;font-size:11px;}
+  END DEBUG CSS */
   .card-actions{position:absolute;top:10px;right:10px;display:flex;gap:5px;}
   .action-btn{width:28px;height:28px;border-radius:6px;border:1px solid var(--border);background:var(--surface2);color:var(--muted);font-size:13px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;padding:0;}
   .action-btn:hover{border-color:var(--accent);color:var(--text);background:var(--surface);}
@@ -129,10 +131,7 @@
     </div>
     <div class="buildings-grid" id="buildingsGrid"></div>
     <div class="summary-bar" id="summaryBar"></div>
-    <div id="verifyPanel" style="display:none;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:14px 18px;margin-bottom:16px;">
-      <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:600;color:var(--muted);letter-spacing:.08em;text-transform:uppercase;margin-bottom:10px;">Weryfikacja · Luty 2026 (wartości ERP)</div>
-      <div id="verifyRows"></div>
-    </div>
+    <!-- DEBUG PANEL — uncomment to diagnose parsing issues
     <div id="debug">
       <button class="debug-toggle" onclick="toggleDebug()">🔍 Pokaż log parsowania</button>
       <div class="debug-body" id="debugBody">
@@ -152,6 +151,7 @@
         </div>
       </div>
     </div>
+    END DEBUG PANEL -->
   </div>
 </main>
 <footer>Fizar Spółka z ograniczoną odpowiedzialnością &nbsp;·&nbsp; NIP: 5272771211 &nbsp;·&nbsp; Będzin</footer>
@@ -159,11 +159,6 @@
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
 <script>
-const ERP_VERIFY = {
-  'GRUDZ_O':         {zm:93.10998081, st:850.55},
-  'GRUDZ_O-0-B0002': {zm:null,        st:1403.40},
-  'GRUDZ_R':         {zm:93.11000397, st:11142.17},
-};
 const MW_BLD_MAP = [
   {mw:0.040, name:'GRUDZ_O'},
   {mw:0.066, name:'GRUDZ_O-0-B0002'},
@@ -171,32 +166,33 @@ const MW_BLD_MAP = [
 ];
 const BLD_ORDER = ['GRUDZ_O','GRUDZ_O-0-B0002','GRUDZ_R'];
 
-function matchBuilding(mw) {
-  const f = MW_BLD_MAP.find(b => Math.abs(b.mw - mw) < 0.001);
-  return f ? f.name : null;
+function matchBuilding(mw){
+  const f=MW_BLD_MAP.find(b=>Math.abs(b.mw-mw)<0.001);
+  return f?f.name:null;
 }
-function fmtPLN(v){ return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2})+' zł'; }
-function fmt8(v)  { return Number(v).toFixed(8).replace('.',','); }
-function fmt2(v)  { return Number(v).toFixed(2).replace('.',','); }
+function fmtPLN(v){return Number(v).toLocaleString('pl-PL',{minimumFractionDigits:2})+' zł';}
+function fmt8(v){return Number(v).toFixed(8).replace('.',',');}
+function fmt2(v){return Number(v).toFixed(2).replace('.',',');}
 
-const dropzone  = document.getElementById('dropzone');
-const fileInput = document.getElementById('fileInput');
-dropzone.addEventListener('dragover', e=>{e.preventDefault();dropzone.classList.add('drag');});
-dropzone.addEventListener('dragleave', ()=>dropzone.classList.remove('drag'));
-dropzone.addEventListener('drop', e=>{e.preventDefault();dropzone.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
-fileInput.addEventListener('change', ()=>{if(fileInput.files[0])processFile(fileInput.files[0]);});
+const dropzone=document.getElementById('dropzone');
+const fileInput=document.getElementById('fileInput');
+dropzone.addEventListener('dragover',e=>{e.preventDefault();dropzone.classList.add('drag');});
+dropzone.addEventListener('dragleave',()=>dropzone.classList.remove('drag'));
+dropzone.addEventListener('drop',e=>{e.preventDefault();dropzone.classList.remove('drag');if(e.dataTransfer.files[0])processFile(e.dataTransfer.files[0]);});
+fileInput.addEventListener('change',()=>{if(fileInput.files[0])processFile(fileInput.files[0]);});
 
 function showError(msg){const el=document.getElementById('errorBox');el.textContent=msg;el.style.display='block';}
 
 function restart(){
   ['panel-upload','results'].forEach(id=>document.getElementById(id).style.display=id==='panel-upload'?'block':'none');
-  ['processing','errorBox','warnBox','verifyPanel','debug'].forEach(id=>document.getElementById(id).style.display='none');
+  ['processing','errorBox','warnBox'].forEach(id=>document.getElementById(id).style.display='none');
   dropzone.style.display='block';
   fileInput.value='';
+  /* debug/verify reset — uncomment if debug panel re-enabled
   document.getElementById('dbgFiles').innerHTML='';
   document.getElementById('dbgItems').innerHTML='<tr><th>faktura (P_2)</th><th>lp</th><th>opis (P_7)</th><th>unit (P_8A)</th><th>qty (P_8B)</th><th>netto (P_11)</th></tr>';
   document.getElementById('dbgResult').innerHTML='';
-  document.getElementById('verifyRows').innerHTML='';
+  */
 }
 
 async function processFile(file){
@@ -206,12 +202,12 @@ async function processFile(file){
   document.getElementById('processingText').textContent='Wczytuję ZIP…';
   document.getElementById('processing').style.display='block';
   try{
-    const zip = await JSZip.loadAsync(await file.arrayBuffer());
-    const xmlFiles = Object.keys(zip.files).filter(n=>n.toLowerCase().endsWith('.xml'));
+    const zip=await JSZip.loadAsync(await file.arrayBuffer());
+    const xmlFiles=Object.keys(zip.files).filter(n=>n.toLowerCase().endsWith('.xml'));
     if(!xmlFiles.length) throw new Error('Brak plików XML w archiwum.');
-    document.getElementById('dbgFiles').innerHTML=
+    /* document.getElementById('dbgFiles').innerHTML=
       `<span class="log-step">Pliki XML: ${xmlFiles.length}</span><br>`+
-      xmlFiles.map(f=>`· ${f}`).join('<br>');
+      xmlFiles.map(f=>`· ${f}`).join('<br>'); */
     document.getElementById('processingText').textContent=`Parsowanie ${xmlFiles.length} faktur XML…`;
     const invoices=[];
     for(const fname of xmlFiles){
@@ -252,14 +248,13 @@ function parseXML(xmlText,fname){
       netto: parseFloat(getText(row,'P_11')||'0'),
     });
   });
-  return {invNo, periodTo, rows, fname};
+  return{invNo,periodTo,rows,fname};
 }
 
 function buildResult(invoices){
-  const dbgItems  = document.getElementById('dbgItems');
-  const dbgResult = document.getElementById('dbgResult');
+  /* const dbgItems  = document.getElementById('dbgItems');
+  const dbgResult = document.getElementById('dbgResult'); */
 
-  // Period from first invoice
   let okres='—';
   if(invoices[0]?.periodTo){
     const dt=new Date(invoices[0].periodTo);
@@ -268,19 +263,16 @@ function buildResult(invoices){
   }
 
   const buildings=[];
-
   for(const inv of invoices){
     const mwRows=inv.rows.filter(r=>r.unit==='MW');
     const gjRows=inv.rows.filter(r=>r.unit==='GJ');
 
-    // Log all rows to debug table
-    inv.rows.forEach(r=>{
+    /* inv.rows.forEach(r=>{
       const tr=document.createElement('tr');
       tr.innerHTML=`<td style="color:var(--muted);font-size:10px">${inv.invNo}</td><td>${r.lp}</td><td>${r.desc}</td><td class="unit-${r.unit}">${r.unit}</td><td>${r.qty.toFixed(6)}</td><td style="color:var(--green)">${r.netto.toFixed(2)}</td>`;
       dbgItems.appendChild(tr);
-    });
+    }); */
 
-    // Unique MW qty → building
     const mwUniq=[...new Set(mwRows.map(r=>r.qty.toFixed(6)))].map(parseFloat);
     const mwTotal=mwUniq.reduce((s,v)=>s+v,0);
     const gjUniq=[...new Set(gjRows.map(r=>r.qty.toFixed(2)))].map(parseFloat);
@@ -292,9 +284,9 @@ function buildResult(invoices){
     const gjQty=gjTotal>0?gjTotal:null;
     const cenaZm=gjQty?zmSum/gjQty:0;
 
-    dbgResult.innerHTML+=`<span class="log-ok">${bldName}</span> · ${inv.invNo}<br>`;
+    /* dbgResult.innerHTML+=`<span class="log-ok">${bldName}</span> · ${inv.invNo}<br>`;
     dbgResult.innerHTML+=`  MW=${mwTotal.toFixed(4)} GJ=${gjQty?.toFixed(2)||'brak'} · stała=${stSum.toFixed(2)} zł · zmSum=${zmSum.toFixed(2)} zł<br>`;
-    dbgResult.innerHTML+=`  → PLN/GJ=${gjQty?cenaZm.toFixed(8):'—'}<br><br>`;
+    dbgResult.innerHTML+=`  → PLN/GJ=${gjQty?cenaZm.toFixed(8):'—'}<br><br>`; */
 
     buildings.push({name:bldName,invNo:inv.invNo,mwTotal,gj:gjQty,cena_zmienna:cenaZm,stala:stSum,zm_rows:gjRows.map(r=>({name:r.desc,netto:r.netto})),st_rows:mwRows.map(r=>({name:r.desc,netto:r.netto}))});
   }
@@ -323,116 +315,78 @@ function toggleBreakdown(btn,id){
 }
 window.toggleBreakdown=toggleBreakdown;
 
+/* DEBUG FUNCTIONS — uncomment with debug panel
 function toggleDebug(){
   const body=document.getElementById('debugBody');
   body.classList.toggle('open');
   document.querySelector('.debug-toggle').textContent=body.classList.contains('open')?'🔍 Ukryj log parsowania':'🔍 Pokaż log parsowania';
 }
 window.toggleDebug=toggleDebug;
+END DEBUG FUNCTIONS */
 
-function renderVerify(buildings){
-  const panel=document.getElementById('verifyPanel');
-  const rows=document.getElementById('verifyRows');
-  rows.innerHTML='';
-  let allOk=true;
-  buildings.forEach(b=>{
-    const ref=ERP_VERIFY[b.name];
-    if(!ref)return;
-    const stOk=Math.abs(b.stala-ref.st)<0.01;
-    const zmOk=ref.zm!==null?Math.abs(b.cena_zmienna-ref.zm)<0.000001:true;
-    if(!stOk||!zmOk)allOk=false;
-    const zmText=ref.zm!==null
-      ?`zmienna: <span class="${zmOk?'verify-ok':'verify-fail'}">${zmOk?'✓':'✗'} ${fmt8(b.cena_zmienna)} ${zmOk?'':'(ERP: '+ref.zm.toFixed(8)+')'}</span>`
-      :`<span style="color:var(--muted);font-size:11px">zmienna: brak GJ</span>`;
-    rows.innerHTML+=`<div class="verify-row"><span style="font-family:'IBM Plex Mono',monospace;font-size:12px;font-weight:600;min-width:140px">${b.name}</span><span>${zmText}</span><span style="color:var(--muted);font-size:12px">stała: <span class="${stOk?'verify-ok':'verify-fail'}">${stOk?'✓':'✗'} ${fmt2(b.stala)} ${stOk?'':'(ERP: '+ref.st.toFixed(2)+')'}</span></span></div>`;
-  });
-  const badge=document.createElement('div');
-  badge.style.cssText='margin-top:10px;font-size:12px;font-family:IBM Plex Mono,monospace;';
-  badge.innerHTML=allOk?'<span class="verify-ok">✓ Wszystkie wartości zgodne z ERP Luty 2026</span>':'<span class="verify-fail">✗ Wykryto rozbieżności — sprawdź log</span>';
-  rows.appendChild(badge);
-  panel.style.display='block';
-}
-
-function generateNotatka(b, okres) {
-  const zmSum = b.zm_rows.reduce((s,r)=>s+r.netto, 0);
-  const stSum = b.st_rows.reduce((s,r)=>s+r.netto, 0);
-  const gjQty = b.gj ? b.gj.toFixed(2) : null;
-  const lines = [];
+function generateNotatka(b,okres){
+  const zmSum=b.zm_rows.reduce((s,r)=>s+r.netto,0);
+  const stSum=b.st_rows.reduce((s,r)=>s+r.netto,0);
+  const gjQty=b.gj?b.gj.toFixed(2):null;
+  const lines=[];
   lines.push(`CIEPŁO ${okres} — ${b.name}`);
   lines.push('');
   lines.push('Pozycje faktury:');
-  b.zm_rows.forEach(r => lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
-  b.st_rows.forEach(r => lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
+  b.zm_rows.forEach(r=>lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
+  b.st_rows.forEach(r=>lines.push(`  ${r.name}: ${r.netto.toFixed(2)} zł`));
   lines.push('');
   lines.push(`Ciepło ${okres}`);
-  if (gjQty) {
-    const zmParts = b.zm_rows.map(r => r.netto.toFixed(2));
+  if(gjQty){
+    const zmParts=b.zm_rows.map(r=>r.netto.toFixed(2));
     lines.push(`zmienna = (${zmParts.join(' + ')}) / ${gjQty} = ${zmSum.toFixed(2)} / ${gjQty} = ${b.cena_zmienna.toFixed(8)}`);
   } else {
     lines.push(`zmienna = brak zużycia GJ`);
   }
-  const stParts = b.st_rows.map(r => r.netto.toFixed(2));
+  const stParts=b.st_rows.map(r=>r.netto.toFixed(2));
   lines.push(`stała = ${stParts.join(' + ')} = ${stSum.toFixed(2)}`);
   return lines.join('\n');
 }
 
-async function copyNotatkaText(btn, b, okres) {
-  const card = btn.closest('.bld-card');
-  const breakdown = card.querySelector('.breakdown-body');
-  if (!breakdown.classList.contains('open')) {
-    breakdown.classList.add('open');
-    const toggle = card.querySelector('.breakdown-toggle');
-    if (toggle) toggle.textContent = '▲ ukryj szczegóły';
+async function copyNotatkaText(btn,b,okres){
+  const card=btn.closest('.bld-card');
+  const breakdown=card.querySelector('.breakdown-body');
+  if(!breakdown.classList.contains('open')){breakdown.classList.add('open');const toggle=card.querySelector('.breakdown-toggle');if(toggle)toggle.textContent='▲ ukryj szczegóły';}
+  const actions=card.querySelector('.card-actions');
+  actions.style.visibility='hidden';
+  try{
+    const canvas=await html2canvas(card,{backgroundColor:'#181c27',scale:2,logging:false,useCORS:true});
+    const dataUrl=canvas.toDataURL('image/png');
+    const text=generateNotatka(b,okres);
+    const textHtml=text.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('');
+    const html=`<div><img src="${dataUrl}" style="max-width:100%;display:block;margin-bottom:8px;"/>${textHtml}</div>`;
+    await navigator.clipboard.write([new ClipboardItem({'text/html':new Blob([html],{type:'text/html'}),'text/plain':new Blob([text],{type:'text/plain'})})]);
+  }catch(e){
+    await navigator.clipboard.writeText(generateNotatka(b,okres));
   }
-  const actions = card.querySelector('.card-actions');
-  actions.style.visibility = 'hidden';
-  try {
-    const canvas = await html2canvas(card, {backgroundColor:'#181c27', scale:2, logging:false, useCORS:true});
-    const dataUrl = canvas.toDataURL('image/png');
-    const text = generateNotatka(b, okres);
-    const textHtml = text.split('\n').map(l=>`<p>${l||'&nbsp;'}</p>`).join('');
-    const html = `<div><img src="${dataUrl}" style="max-width:100%;display:block;margin-bottom:8px;" />${textHtml}</div>`;
-    await navigator.clipboard.write([new ClipboardItem({
-      'text/html': new Blob([html], {type:'text/html'}),
-      'text/plain': new Blob([text], {type:'text/plain'}),
-    })]);
-  } catch(e) {
-    console.error('Clipboard error:', e);
-    await navigator.clipboard.writeText(generateNotatka(b, okres));
-  }
-  actions.style.visibility = 'visible';
-  btn.textContent = '✓'; btn.classList.add('ok');
-  setTimeout(() => { btn.textContent = '📋'; btn.classList.remove('ok'); }, 2500);
+  actions.style.visibility='visible';
+  btn.textContent='✓';btn.classList.add('ok');
+  setTimeout(()=>{btn.textContent='📋';btn.classList.remove('ok');},2500);
 }
-window.copyNotatkaText = copyNotatkaText;
+window.copyNotatkaText=copyNotatkaText;
 
-async function copyNotatkaPng(btn, card) {
-  const breakdown = card.querySelector('.breakdown-body');
-  if (!breakdown.classList.contains('open')) {
-    breakdown.classList.add('open');
-    const toggle = card.querySelector('.breakdown-toggle');
-    if (toggle) toggle.textContent = '▲ ukryj szczegóły';
-  }
-  const actions = card.querySelector('.card-actions');
-  actions.style.visibility = 'hidden';
-  try {
-    const canvas = await html2canvas(card, {backgroundColor:'#181c27', scale:2, logging:false, useCORS:true});
-    const b = card._bldData;
-    const okres = card._okres;
-    const a = document.createElement('a');
-    a.download = `cieplo_${b.name}_${okres.replace(' ','_')}.png`;
-    a.href = canvas.toDataURL('image/png');
-    document.body.appendChild(a); a.click(); document.body.removeChild(a);
-    btn.textContent = '✓'; btn.classList.add('ok');
-    setTimeout(() => { btn.textContent = '📷'; btn.classList.remove('ok'); }, 2500);
-  } catch(e) {
-    console.error('html2canvas error:', e);
-    btn.textContent = '✗';
-    setTimeout(() => { btn.textContent = '📷'; }, 2000);
-  }
-  actions.style.visibility = 'visible';
+async function copyNotatkaPng(btn,card){
+  const breakdown=card.querySelector('.breakdown-body');
+  if(!breakdown.classList.contains('open')){breakdown.classList.add('open');const toggle=card.querySelector('.breakdown-toggle');if(toggle)toggle.textContent='▲ ukryj szczegóły';}
+  const actions=card.querySelector('.card-actions');
+  actions.style.visibility='hidden';
+  try{
+    const canvas=await html2canvas(card,{backgroundColor:'#181c27',scale:2,logging:false,useCORS:true});
+    const b=card._bldData;const okres=card._okres;
+    const a=document.createElement('a');
+    a.download=`cieplo_${b.name}_${okres.replace(' ','_')}.png`;
+    a.href=canvas.toDataURL('image/png');
+    document.body.appendChild(a);a.click();document.body.removeChild(a);
+    btn.textContent='✓';btn.classList.add('ok');
+    setTimeout(()=>{btn.textContent='📷';btn.classList.remove('ok');},2500);
+  }catch(e){btn.textContent='✗';setTimeout(()=>{btn.textContent='📷';},2000);}
+  actions.style.visibility='visible';
 }
-window.copyNotatkaPng = copyNotatkaPng;
+window.copyNotatkaPng=copyNotatkaPng;
 
 function renderResults(data){
   document.getElementById('results').style.display='block';
@@ -453,12 +407,11 @@ function renderResults(data){
     const zmFmt=hasGJ?fmt8(b.cena_zmienna):'0,00000000';
     const card=document.createElement('div');
     card.className='bld-card';
-    card._bldData = b;
-    card._okres = data.okres;
+    card._bldData=b;card._okres=data.okres;
     card.innerHTML=`
       <div class="card-actions">
-        <button class="action-btn" title="Kopiuj notatkę → Ctrl+V do Notatka w Enova" onclick="copyNotatkaText(this, this.closest('.bld-card')._bldData, this.closest('.bld-card')._okres)">📋</button>
-        <button class="action-btn" title="Pobierz PNG → załącz w Enova" onclick="copyNotatkaPng(this, this.closest('.bld-card'))">📷</button>
+        <button class="action-btn" title="Kopiuj notatkę → Ctrl+V do Notatka w Enova" onclick="copyNotatkaText(this,this.closest('.bld-card')._bldData,this.closest('.bld-card')._okres)">📋</button>
+        <button class="action-btn" title="Pobierz PNG → załącz w Enova" onclick="copyNotatkaPng(this,this.closest('.bld-card'))">📷</button>
       </div>
       <div class="bld-name">${b.name}</div>
       <div class="bld-meta">MW=${b.mwTotal.toFixed(4)} · ${hasGJ?b.gj.toFixed(2)+' GJ':'brak GJ'} · ${data.okres} · ${b.invNo}</div>
@@ -482,8 +435,6 @@ function renderResults(data){
     <div><div class="sum-label">Łączne GJ</div><div class="sum-val">${totalGJ.toFixed(2)}</div></div>
     <div><div class="sum-label">Łącznie netto</div><div class="sum-val">${fmtPLN(totalZm+totalSt)}</div></div>`;
   if(warnings.length){const wb=document.getElementById('warnBox');wb.textContent='⚠ '+warnings.join(' | ');wb.style.display='block';}
-  renderVerify(data.buildings);
-  document.getElementById('debug').style.display='block';
 }
 window.restart=restart;
 </script>
